@@ -2,7 +2,7 @@
 
 # Path to GDB macros file.  Customize for your site.
 ###--- Change the path to point to your gdb-macros file ---### 
-GDBMACROS=/home/nico/Desktop/os/project2/misc/gdb-macros
+GDBMACROS=/home/ramesh/EE461S/SKKU/pintos/misc/gdb-macros
 
 # Choose correct GDB.
 if command -v i386-elf-gdb >/dev/null 2>&1; then
