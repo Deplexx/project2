@@ -1,5 +1,23 @@
 # Project2 - Process API and SysCalls
 
+Irene:
+1. implemented draft version of syscall
+2. compiles if commment out strcpy line
+3. need to create prototype in header file
+4. need to debug
+
+
+
+
+
+
+
+
+
+
+
+
+
 This is the [User Programs][userprog] project in Pintos. To get started:
 
 - Form a team of 3 members
