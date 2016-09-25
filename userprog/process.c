@@ -14,9 +14,13 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
+
+struct lock lock_stack;
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -25,23 +29,87 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
+union mem_ptr {
+  char *c;
+  int *i;
+} mp;
+
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *prog) 
 {
-  char *fn_copy;
+  lock_acquire(&lock_stack);
+  char *prog_copy;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  prog_copy = palloc_get_page (0);
+  if (prog_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (prog_copy, prog, PGSIZE);
+
+  mp.c = (char*) PHYS_BASE;
+  char *temp;
+  char *prog_ptr = prog_copy;
+  char *prog_tok;
+  int div;
+  char *argv[PGSIZE];
+  int argc = 0;
+  int aggrLen = 0;
+  int i; //for-loop index
+  //copy the arguments onto the user stack
+  prog_tok = strtok_r(prog_ptr, " ", &temp);
+  prog_ptr = temp;
+  while(prog_tok) {
+    int len = strlen(prog_tok);
+    aggrLen += len + 1; //account for the '\0'
+    for(i = 0; i <= len; ++i) {
+      *(mp.c) = prog_tok[len - i]; //want the '\0' character
+      --(mp.c);
+    }
+    argv[i] = mp.c;
+    ++argc;
+    
+    prog_tok = strtok_r(prog_ptr, " ", &temp);
+    prog_ptr = temp;
+  }
+
+  //offset padding
+  div = aggrLen % sizeof(int); //obtain padding offset
+  if(div) {
+    for(i = 0; i < div; ++i) {
+      *(mp.c) = 0x00; //padding if needed
+      --(mp.c);
+    }
+  }
+
+  //delimit end of argv array
+  *(mp.i) = 0x0000;
+  --(mp.i);
+
+  //copy argument addresses to the stack
+  for(i = 0; i < argc; ++i) {
+    *(mp.i) = (int) argv[argc - i - 1];
+    --(mp.i);
+  }
+
+  //ptr to argv[0]
+  *(mp.i) = mp.i + 1;
+  --(mp.i);
+
+  //argc
+  *(mp.i) = argc;
+  --(mp.i);
+
+  //ret addr
+  *(mp.i) = 0;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (prog_copy); 
+  
+  lock_release(&lock_stack);
   return tid;
 }
 

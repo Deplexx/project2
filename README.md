@@ -40,3 +40,9 @@ This is the [User Programs][userprog] project in Pintos. To get started:
 [ref-push]: http://gitref.org/remotes/#push
 [pull-request]: https://help.github.com/articles/creating-a-pull-request
 [raw]: https://raw.githubusercontent.com/education/guide/master/docs/forks.md
+
+#Group Messages
+-09-22-16
+-Nico - process.c (configuring minimal requiremtns for executing user programs)
+-Irene - syscall.c (implementing linked data structure for system calls)
+-Aria - Meeting Saturday to continue implementation 
