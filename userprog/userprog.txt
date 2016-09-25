@@ -5,9 +5,9 @@
 		     +--------------------------+
 ---- GROUP ----
 >> Fill in the names and email addresses of your group members.
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Nico Cortes <nico.crts@gmail.com>
+Irene Zhang <email@domain.example>
+Aria Pahlavan <email@domain.example>
 ---- PRELIMINARIES ----
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.

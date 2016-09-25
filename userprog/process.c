@@ -89,7 +89,7 @@ process_execute (const char *prog)
 
   //copy argument addresses to the stack
   for(i = 0; i < argc; ++i) {
-    *(mp.i) = argv[argc - i - 1];
+    *(mp.i) = (int) argv[argc - i - 1];
     --(mp.i);
   }
 
