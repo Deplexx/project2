@@ -32,26 +32,38 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 
 
+/* @Niko: We need to create a struct here that's only for a child process which would have
+  	these members: file name, semaphore, argc, argv, etc.
+*/
+
 
 tid_t
 process_execute (const char *prog) 
 {
   /* lock_acquire(&lock_stack); */
+	/* @Niko: Create a instance of child struct */
+
   char *prog_copy;
   tid_t tid;
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  prog_copy = palloc_get_page (0);
+  prog_copy = palloc_get_page (0); 		/* @Niko: this is ours
+  											we can make it to point to the child structure*/
   if (prog_copy == NULL)
     return TID_ERROR;
   strlcpy (prog_copy, prog, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy);
+  tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy); /**/
   if (tid == TID_ERROR)
     palloc_free_page (prog_copy); 
   
+
+	/*@Nico: Before we exit we need to use sema_down (i.e. wait) to wait for the child process to finish.
+			to do this, use the semaphore member of child struct*/
+
+
   /* lock_release(&lock_stack); */
   return tid;
 }
@@ -59,9 +71,11 @@ process_execute (const char *prog)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *file_name_) /*@Nico: void *file_name_ need to be changed to a child struct argument 
+									which will be passed to here by thead_creat func*/
 {
-  char *file_name = file_name_;
+  char *file_name = file_name_; /* @Nico: Modify this to be a structure for child which would have
+  									file name, semaphore, argc, argv, etc. */
   struct intr_frame if_;
   bool success;
 
@@ -70,12 +84,23 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp); /* @Nico: you have two options: 1) Only send the file name to load... 
+  													no args should be send to load.
+  													In other words, make sure that file_name only contains the file name and no arguments
+  													(example: if command line is "ls -l", only pass "ls" to load) The reason is that load 
+  													also loads the file executable from disk onto the memory. If you choose this option,
+  													then you need to do the setup_stack call here (after "if(!success)"), instead of doing 
+  													it inside the load function
+
+  													2) send the whole command and make sure in load function, you only pass file name to
+  													filesys_open without any arguments. */
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+	
+	/* @Nico: before asm, make sure you sema_up or release the parent process using the argumet passed to this function */
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -99,12 +124,12 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+  return -1;	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
 }
 
 /* Free the current process's resources. */
 void
-process_exit (void)
+process_exit (void)	
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -483,7 +508,9 @@ setup_stack (void **esp, const char *prog)
   /*   prog_tok = strtok_r(prog_ptr, " ", &temp); */
   /*   prog_ptr = temp; */
   /* } */
-  char *argAddr[40]; /*@TODO increase!*/
+
+  /*@Nico: all of these variables created here can be part of child struct*/
+  char *argAddr[40]; /*@TODO increase!*/	
   int argc = 0;
   int div = 0; /*used for padding offset*/
 
