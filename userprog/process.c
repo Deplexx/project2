@@ -528,6 +528,8 @@ setup_stack (void **esp, const char *prog)
   /*ret addr*/
   *(mp.i) = 0x0000; /*for now...*/
 
+  *esp = mp.i;
+
   return success;
 }
 
