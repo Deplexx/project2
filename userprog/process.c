@@ -18,6 +18,9 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
+
+/* struct lock lock_stack; */
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -26,10 +29,6 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-union mem_ptr {
-  char *c;
-  int *i;
-} mp;
 
 
 
@@ -37,9 +36,10 @@ union mem_ptr {
 tid_t
 process_execute (const char *prog) 
 {
+  /* lock_acquire(&lock_stack); */
   char *prog_copy;
   tid_t tid;
-
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   prog_copy = palloc_get_page (0);
@@ -47,66 +47,12 @@ process_execute (const char *prog)
     return TID_ERROR;
   strlcpy (prog_copy, prog, PGSIZE);
 
-  /* mp.c = prog_copy; */
-  /* char *temp; */
-  /* char *prog_ptr = prog_copy; */
-  /* char *prog_tok; */
-  /* int div; /\*used for 0-padding calculation*\/ */
-  /* int argc; */
-  /* int aggrLen = 0; */
-  /* int i; /\*for-loop index*\/ */
-
-  /* /\*tokenize the program string*\/ */
-  /* prog_tok = strtok_r(prog_ptr, " ", &temp); */
-  /* prog_ptr = temp; */
-
-  /* /\*format all arguments correctly*\/ */
-  /* while(prog_tok) { */
-  /*   int len = strlen(prog_tok); */
-
-  /*   strlcpy(prog_copy + aggrLen, prog_tok, PGSIZE); */
-
-  /*   aggrLen += len + 1; /\*include '\0'*\/ */
-  /*   ++argc; */
-
-  /*   prog_tok = strtok_r(prog_ptr, " ", &temp); */
-  /*   prog_ptr = temp; */
-  /* } */
-
-  /* /\*offset padding*\/ */
-  /* div = aggrLen % sizeof(int); /\*obtain padding offset*\/ */
-  /* if(div) { */
-  /*   for(i = 0; i < div; ++i) { */
-  /*     *(mp.c) = 0x00; /\*padding if needed*\/ */
-  /*     ++(mp.c); */
-  /*   } */
-  /* } */
-
-  /* /\*delimit end of argv array*\/ */
-  /* *(mp.i) = 0x0000; */
-  /* ++(mp.i); */
-
-  /* /\*copy argument addresses to the stack*\/ */
-  /* for(i = 0; i < argc; ++i) { */
-  /*   *(mp.i) = (int) argv[argc - 1 - i]; */
-  /*   ++(mp.i); */
-  /* } */
-
-  /* /\*ptr to argv[0]*\/ */
-  /* *(mp.i) = (int) (mp.i + 1); */
-  /* ++(mp.i); */
-
-  /* /\*argc*\/ */
-  /* *(mp.i) = argc; */
-  /* ++(mp.i); */
-
-  /* /\*ret addr*\/ */
-  /* *(mp.i) = 0x0000; */
-
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy);
   if (tid == TID_ERROR)
     palloc_free_page (prog_copy); 
+  
+  /* lock_release(&lock_stack); */
   return tid;
 }
 
@@ -147,6 +93,7 @@ start_process (void *file_name_)
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
    immediately, without waiting.
+
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
@@ -259,7 +206,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const char *prog);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -366,7 +313,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -432,11 +379,15 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
 /* Loads a segment starting at offset OFS in FILE at address
    UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
    memory are initialized, as follows:
+
         - READ_BYTES bytes at UPAGE must be read from FILE
           starting at offset OFS.
+
         - ZERO_BYTES bytes at UPAGE + READ_BYTES must be zeroed.
+
    The pages initialized by this function must be writable by the
    user process if WRITABLE is true, read-only otherwise.
+
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
 static bool
@@ -486,8 +437,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
+union mem_ptr {
+  char *c;
+  int *i;
+} mp;
+
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const char *prog) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -501,6 +457,82 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  mp.c = (char*) PHYS_BASE - 1;
+  /* char *temp; */
+  /* char *prog_ptr = prog; */
+  /* char *prog_tok; */
+  /* int div; */
+  /* int argc = 0; */
+  /* char *argv[]; */
+  /* int aggrLen = 0; */
+  /* int i; /\*for-loop index*\/ */
+  /* char *args = (char*) malloc(PGSIZE * sizeof(char)); */
+
+  /* /\*copy the arguments onto the user stack*\/ */
+  /* prog_tok = strtok_r(prog_ptr, " ", &temp); */
+  /* prog_ptr = temp; */
+  /* while(prog_tok) { */
+  /*   int len = strlen(prog_tok); */
+  /*   for(i = 0; i <= len; ++i) { */
+  /*     args[aggrLen + i] = prog_tok[i]; /\*want the '\0' character*\/ */
+  /*   } */
+  /*   aggrLen += len + 1; /\*account for the '\0'*\/ */
+  /*   ++argc; */
+    
+  /*   prog_tok = strtok_r(prog_ptr, " ", &temp); */
+  /*   prog_ptr = temp; */
+  /* } */
+  char *argAddr[40]; /*@TODO increase!*/
+  int argc = 0;
+  int div = 0; /*used for padding offset*/
+
+  int i;
+  int lenProg = 0;
+  for(i = strlen(prog); i <= 0; --i) {
+    if(prog[i] != ' ') {
+      ++lenProg;
+      *(mp.c) = prog[i];
+      --(mp.c);
+    } else {
+      argAddr[argc] = mp.c + 1; /*reverse order - temporary storage for argv*/
+      ++argc;
+    }
+  }
+  argAddr[argc] = mp.c + 1; /*first arg*/
+
+  /*offset padding*/
+  div = (int) lenProg % sizeof(int); /*obtain padding offset*/
+  if(div) {
+    for(i = 0; i < div; ++i) {
+      *(mp.c) = 0x00; /*padding if needed*/
+      --(mp.c);
+    }
+  }
+  
+  /*delimit end of argv array*/
+  *(mp.i) = 0x0000;
+  --(mp.i);
+
+  /*copy argument addresses to the stack*/
+  for(i = 0; i < argc; ++i) {
+    *(mp.i) = (int) argAddr[i];
+    --(mp.i);
+  }
+
+  /*ptr to argv[0]*/
+  *(mp.i) = (int) mp.i + 1;
+  --(mp.i);
+
+  /*argc*/
+  *(mp.i) = argc;
+  --(mp.i);
+
+  /*ret addr*/
+  *(mp.i) = 0x0000; /*for now...*/
+
+  *esp = mp.i;
+
   return success;
 }
 
@@ -520,6 +552,6 @@ install_page (void *upage, void *kpage, bool writable)
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
-return (pagedir_get_page (t->pagedir, upage) == NULL
+  return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
