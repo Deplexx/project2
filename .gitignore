@@ -43,3 +43,4 @@ tags
 # Personal config files
 utils/
 threads/
+.idea/
