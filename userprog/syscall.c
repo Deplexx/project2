@@ -50,7 +50,7 @@ syscall_init (void)
   fd_counter = 2; /*initialze fd and open_file list*/
   list_init (&open_file_list);
   /*TODO:filesys_init needed?*/
-  filesys_init(true);
+  /*filesys_init(true);*/
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -60,7 +60,8 @@ static int get_syscall_num(void){
 
 static void get_syscall_arg(int* esp, int num){
   int* param_ptr;
-  for (int i=0;i<num;i++){
+  int i;
+  for (i=0;i<num;i++){
     param_ptr = esp + i + 1;
     if (!is_user_vaddr(param_ptr)){
       exit(-1);
@@ -300,7 +301,8 @@ int read(int fd, void* buffer,unsigned size){
   /*read from keyboard*/
   if (fd == 0){
     uint8_t *buffer_ = (uint8_t *)buffer;
-    for (unsigned i=0;i<size;i++){
+    unsigned int i;
+    for (i=0;i<size;i++){
       *(buffer_+i) = input_getc();
     }
     lock_release(&lock_filesys);

@@ -20,62 +20,119 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 
-/* struct lock lock_stack; */
+/* @Niko: We need to create a struct here that's only for a child process which would have
+  	these members: file name, semaphore, argc, argv, etc.
+*/
+typedef struct struct_child {
+  char *prog;
+  char *fname;
+  struct semaphore *sema;
+  int argc;
+  char **argv;
+} child;
+
+child *child_new(const char *prog);
+void child_destroy(child *c);
+
+child *child_new(const char *prog) {
+  child *c = (child*) malloc(sizeof(child));
+  c->prog = (char*) palloc_get_page(0);
+  c->sema = (struct semaphore*) malloc(sizeof(struct semaphore));
+  c->argv = (char**) malloc(sizeof(char*));
+
+  if(!(c && c->prog && c->sema && c->argv)) {
+    child_destroy(c);
+    return NULL;
+  }
+
+  strlcpy(c->prog, prog, PGSIZE);
+			    
+  sema_init(c->sema, 1);			
+
+  c->argc = 0;
+  int argvMAX = 1;
+
+  char *prog_tok;
+  char *prog_ptr = c->prog;
+  char *rest_ptr;
+  
+  for(prog_tok = strtok_r(prog_ptr, " ", &rest_ptr);
+      prog_tok;
+      prog_tok = strtok_r(prog_ptr = rest_ptr, " ", &rest_ptr)) {
+    if(!c->argc) {
+      c->fname = prog_tok;
+    }
+    
+    if(c->argc == argvMAX) {
+      c->argv = realloc(c->argv, argvMAX *= 2);
+      if(c->argv) {
+	child_destroy(c);
+        return NULL;
+      }
+    }
+
+    c->argv[c->argc] = prog_tok;
+    ++(c->argc);
+  }
+  
+  return c;
+}
+
+void child_destroy(child *c) {
+  if(!c) {
+    return;
+  }
+  
+  palloc_free_page (c->prog);
+  
+  free(c->sema);
+  free(c->argv);
+
+  free(c);
+}
 
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (const child *childProcess, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 
-
-
-/* @Niko: We need to create a struct here that's only for a child process which would have
-  	these members: file name, semaphore, argc, argv, etc.
-*/
-
-
 tid_t
 process_execute (const char *prog) 
 {
-  /* lock_acquire(&lock_stack); */
-	/* @Niko: Create a instance of child struct */
-
-  char *prog_copy;
+  /* @Niko: Create a instance of child struct */
+  child *childProcess;
   tid_t tid;
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  prog_copy = palloc_get_page (0); 		/* @Niko: this is ours
-  											we can make it to point to the child structure*/
-  if (prog_copy == NULL)
+  childProcess = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
+  if (childProcess == NULL)
     return TID_ERROR;
-  strlcpy (prog_copy, prog, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy); /**/
+  tid = thread_create (prog, PRI_DEFAULT, start_process, childProcess->prog); /*this may need to change...*/
   if (tid == TID_ERROR)
-    palloc_free_page (prog_copy); 
-  
+    child_destroy(childProcess);
 
 	/*@Nico: Before we exit we need to use sema_down (i.e. wait) to wait for the child process to finish.
 			to do this, use the semaphore member of child struct*/
 
+  sema_down(childProcess->sema); /*wait for child process to complete*/
+  child_destroy(childProcess);
 
-  /* lock_release(&lock_stack); */
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_) /*@Nico: void *file_name_ need to be changed to a child struct argument 
+start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child struct argument 
 									which will be passed to here by thead_creat func*/
 {
-  char *file_name = file_name_; /* @Nico: Modify this to be a structure for child which would have
-  									file name, semaphore, argc, argv, etc. */
+  child *childProcess = (child*) cp;
   struct intr_frame if_;
   bool success;
 
@@ -84,7 +141,7 @@ start_process (void *file_name_) /*@Nico: void *file_name_ need to be changed to
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp); /* @Nico: you have two options: 1) Only send the file name to load... 
+  success = load (childProcess, &if_.eip, &if_.esp); /* @Nico: you have two options: 1) Only send the file name to load... 
   													no args should be send to load.
   													In other words, make sure that file_name only contains the file name and no arguments
   													(example: if command line is "ls -l", only pass "ls" to load) The reason is that load 
@@ -96,7 +153,6 @@ start_process (void *file_name_) /*@Nico: void *file_name_ need to be changed to
   													filesys_open without any arguments. */
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
 	
@@ -108,6 +164,8 @@ start_process (void *file_name_) /*@Nico: void *file_name_ need to be changed to
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+
+  sema_up(childProcess->sema); /*wait for program to be loaded first*/
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -231,7 +289,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp, const char *prog);
+static bool setup_stack (void **esp, const child *childProcess);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -242,7 +300,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const child *childProcess, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -258,10 +316,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (childProcess->fname);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", childProcess->fname);
       goto done; 
     }
 
@@ -274,7 +332,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", childProcess->fname);
       goto done; 
     }
 
@@ -338,7 +396,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp, file_name))
+  if (!setup_stack (esp, childProcess))
     goto done;
 
   /* Start address. */
@@ -468,7 +526,7 @@ union mem_ptr {
 } mp;
 
 static bool
-setup_stack (void **esp, const char *prog) 
+setup_stack (void **esp, const child *childProcess) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -484,52 +542,22 @@ setup_stack (void **esp, const char *prog)
     }
 
   mp.c = (char*) PHYS_BASE - 1;
-  /* char *temp; */
-  /* char *prog_ptr = prog; */
-  /* char *prog_tok; */
-  /* int div; */
-  /* int argc = 0; */
-  /* char *argv[]; */
-  /* int aggrLen = 0; */
-  /* int i; /\*for-loop index*\/ */
-  /* char *args = (char*) malloc(PGSIZE * sizeof(char)); */
-
-  /* /\*copy the arguments onto the user stack*\/ */
-  /* prog_tok = strtok_r(prog_ptr, " ", &temp); */
-  /* prog_ptr = temp; */
-  /* while(prog_tok) { */
-  /*   int len = strlen(prog_tok); */
-  /*   for(i = 0; i <= len; ++i) { */
-  /*     args[aggrLen + i] = prog_tok[i]; /\*want the '\0' character*\/ */
-  /*   } */
-  /*   aggrLen += len + 1; /\*account for the '\0'*\/ */
-  /*   ++argc; */
-    
-  /*   prog_tok = strtok_r(prog_ptr, " ", &temp); */
-  /*   prog_ptr = temp; */
-  /* } */
-
   /*@Nico: all of these variables created here can be part of child struct*/
-  char *argAddr[40]; /*@TODO increase!*/	
-  int argc = 0;
-  int div = 0; /*used for padding offset*/
-
   int i;
-  int lenProg = 0;
-  for(i = strlen(prog); i <= 0; --i) {
-    if(prog[i] != ' ') {
-      ++lenProg;
-      *(mp.c) = prog[i];
+  int total = 0;
+  for(i = 0; i < childProcess->argc; ++i) {
+    int j;
+    char *arg = childProcess->argv[childProcess->argc - i - 1];
+    int len = strlen(arg);
+    for(j = 0; j <= len; ++j) {
+      *(mp.c) = arg[len - j];
       --(mp.c);
-    } else {
-      argAddr[argc] = mp.c + 1; /*reverse order - temporary storage for argv*/
-      ++argc;
+      ++total;
     }
   }
-  argAddr[argc] = mp.c + 1; /*first arg*/
 
   /*offset padding*/
-  div = (int) lenProg % sizeof(int); /*obtain padding offset*/
+  int div = total % sizeof(int); /*obtain padding offset*/
   if(div) {
     for(i = 0; i < div; ++i) {
       *(mp.c) = 0x00; /*padding if needed*/
@@ -542,8 +570,11 @@ setup_stack (void **esp, const char *prog)
   --(mp.i);
 
   /*copy argument addresses to the stack*/
-  for(i = 0; i < argc; ++i) {
-    *(mp.i) = (int) argAddr[i];
+  int start = (int) PHYS_BASE - 1;
+  total = 0;
+  for(i = 0; i < childProcess->argc; ++i) {
+    total += strlen(childProcess->argv[childProcess->argc - 1 - i]);
+    *(mp.i) = start - total;
     --(mp.i);
   }
 
@@ -552,7 +583,7 @@ setup_stack (void **esp, const char *prog)
   --(mp.i);
 
   /*argc*/
-  *(mp.i) = argc;
+  *(mp.i) = childProcess->argc;
   --(mp.i);
 
   /*ret addr*/
