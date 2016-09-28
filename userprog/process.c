@@ -26,7 +26,7 @@
 typedef struct struct_child {
   char *prog;
   char *fname;
-  struct semaphore *sema;
+  struct semaphore *sema; /* could be a simple variable*/
   int argc;
   char **argv;
 } child;
@@ -130,6 +130,7 @@ process_execute (const char *prog)
     return TID_ERROR;
 
   sema_init(childProcess->sema, 0);
+  printf("hello\n" );
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
@@ -328,7 +329,7 @@ load (const child *childProcess, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-
+  printf("load\n" );
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -565,6 +566,8 @@ setup_stack (void **esp, const child *childProcess)
   /*@Nico: all of these variables created here can be part of child struct*/
   int i;
   int total = 0;
+
+  /* inserting args on stack */
   for(i = 0; i < childProcess->argc; ++i) {
     int j;
     char *arg = childProcess->argv[childProcess->argc - i - 1];
@@ -575,6 +578,30 @@ setup_stack (void **esp, const child *childProcess)
       ++total;
     }
   }
+
+  /* Inserting filename on stack */
+	int j;
+	char *arg = childProcess->fname;
+	int len = strlen(arg);
+	for(j = 0; j <= len; ++j) {
+	  *(mp.c) = arg[len - j];
+	  --(mp.c);
+	  ++total;
+	}
+
+	hex_dump(mp.c, mp.c, ( (char*)(PHYS_BASE - 1) - mp.c ), true);
+/* testing */
+	/**
+  int t;
+  char* st = (char*) PHYS_BASE - 1;
+  for (int t = 0; t < total; ++t)
+  {
+  	printf("%c\n", *st);
+  	st+=1;
+
+
+  }
+*/
 
   /*offset padding*/
   int div = total % sizeof(int); /*obtain padding offset*/
