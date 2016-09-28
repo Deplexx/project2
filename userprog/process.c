@@ -42,6 +42,7 @@ child *child_new(const char *prog) {
   c->sema = (struct semaphore*) malloc(sizeof(struct semaphore));
   c->argv = (char**) malloc(sizeof(char*)*40); /* "40" needs to be changed*/
 
+  /* return null, if error with memory allocation */
   if(!(c && c->prog && c->sema && c->argv)) {
     child_destroy(c);
     return NULL;
@@ -86,7 +87,7 @@ child *child_new(const char *prog) {
   	c->argv[c->argc] = prog_tok;
   	c->argc+=1;
   }
-  
+
   return c;
 }
 
@@ -119,12 +120,16 @@ process_execute (const char *prog)
   /* @Niko: Create a instance of child struct */
   child *childProcess;
   tid_t tid;
+
+  /* initialize semaphore */
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   childProcess = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
   if (childProcess == NULL)
     return TID_ERROR;
+
+  sema_init(childProcess->sema, 0);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
@@ -134,6 +139,7 @@ process_execute (const char *prog)
 	/*@Nico: Before we exit we need to use sema_down (i.e. wait) to wait for the child process to finish.
 			to do this, use the semaphore member of child struct*/
 
+	
   sema_down(childProcess->sema); /*wait for child process to complete*/
   child_destroy(childProcess);
 
@@ -171,15 +177,15 @@ start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child
     thread_exit ();
 	
 	/* @Nico: before asm, make sure you sema_up or release the parent process using the argumet passed to this function */
+  sema_up(childProcess->sema); /*wait for program to be loaded first*/
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
-     and jump to it. */
-
-  sema_up(childProcess->sema); /*wait for program to be loaded first*/
+     and jump to it. */  
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
