@@ -35,10 +35,12 @@ child *child_new(const char *prog);
 void child_destroy(child *c);
 
 child *child_new(const char *prog) {
+
+
   child *c = (child*) malloc(sizeof(child));
   c->prog = (char*) palloc_get_page(0);
   c->sema = (struct semaphore*) malloc(sizeof(struct semaphore));
-  c->argv = (char**) malloc(sizeof(char*));
+  c->argv = (char**) malloc(sizeof(char*)*40); /* "40" needs to be changed*/
 
   if(!(c && c->prog && c->sema && c->argv)) {
     child_destroy(c);
@@ -56,6 +58,7 @@ child *child_new(const char *prog) {
   char *prog_ptr = c->prog;
   char *rest_ptr;
   
+  /* It seems like this part of code is unnecessarily complicated
   for(prog_tok = strtok_r(prog_ptr, " ", &rest_ptr);
       prog_tok;
       prog_tok = strtok_r(prog_ptr = rest_ptr, " ", &rest_ptr)) {
@@ -73,6 +76,15 @@ child *child_new(const char *prog) {
 
     c->argv[c->argc] = prog_tok;
     ++(c->argc);
+  }*/
+
+  /* Exteract and save file name */
+  c->fname = strtok_r(prog_ptr, " ", &rest_ptr);
+
+  /*Extract and save args one by one, increment argc*/
+  while(prog_tok = strtok_r(rest_ptr, " ", &rest_ptr)){
+  	c->argv[c->argc] = prog_tok;
+  	c->argc+=1;
   }
   
   return c;
@@ -94,6 +106,8 @@ void child_destroy(child *c) {
 static thread_func start_process NO_RETURN;
 static bool load (const child *childProcess, void (**eip) (void), void **esp);
 
+
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -113,7 +127,7 @@ process_execute (const char *prog)
     return TID_ERROR;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (prog, PRI_DEFAULT, start_process, childProcess->prog); /*this may need to change...*/
+  tid = thread_create (prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
   if (tid == TID_ERROR)
     child_destroy(childProcess);
 
