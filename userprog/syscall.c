@@ -46,16 +46,12 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void) 
 {
-
+  lock_init(&lock_filesys);
   fd_counter = 2; /*initialze fd and open_file list*/
   list_init (&open_file_list);
   /*TODO:filesys_init needed?*/
   /*filesys_init(true);*/
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-}
-
-static int get_syscall_num(void){
-  return -1;
 }
 
 static void get_syscall_arg(int* esp, int num){
@@ -97,11 +93,9 @@ sp --->	|syscall number |
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  printf ("system call!\n");
-
   struct thread* cur_thread = thread_current();
 
-  int syscall_num = get_syscall_num();/*TODO: find this number*/
+  int syscall_num = *((int*) f->esp);/*TODO: find this number*/
 
   if ((syscall_num > SYS_INUMBER) || (syscall_num < SYS_HALT)){
     cur_thread->status = -1;

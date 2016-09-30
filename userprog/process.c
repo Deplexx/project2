@@ -24,8 +24,6 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 
-struct hash *hash_children;
-
 typedef struct struct_child {
   struct hash_elem hash_elem;
   char *prog;
@@ -37,13 +35,7 @@ typedef struct struct_child {
 } child;
 
 child* child_new(const char *prog);
-void child_destroy(child *c);
-static unsigned hash_child_hash(const struct hash_elem *e, void *aux);
-static bool hash_child_less(const struct hash_elem *a,
-                            const struct hash_elem *b,
-                            void *aux);
-static void hash_child_destroy(struct hash_elem *e, void *aux);
-static child *hash_children_getChild(const tid_t tid);
+void child_delete(child *c);
 
 child *child_new(const char *prog) {
   child *c = (child*) malloc(sizeof(child));
@@ -54,7 +46,7 @@ child *child_new(const char *prog) {
 
   /* return null, if error with memory allocation */
   if(!(c && c->prog && c->sema && c->argv)) {
-    child_destroy(c);
+    child_delete(c);
     return NULL;
   }
 
@@ -65,11 +57,10 @@ child *child_new(const char *prog) {
   c->tid = TID_ERROR;
 
   char *prog_tok;
-  char *prog_ptr = c->prog;
   char *rest_ptr;
 
   /* Exteract and save file name */
-  c->fname = strtok_r(prog_ptr, " ", &rest_ptr);
+  c->argv[0] = c->fname = strtok_r(c->prog, " ", &rest_ptr);
 
   /*Extract and save args one by one, increment argc*/
   c->argc = 1;
@@ -78,14 +69,14 @@ child *child_new(const char *prog) {
       c->argv = (char**) realloc(c->argv, (argvMAX *= 2) * sizeof(char*));
     }
 
-    c->argv[c->argc - 1] = prog_tok;
-    c->argc+=1;
+    c->argv[c->argc] = prog_tok;
+    ++(c->argc);
   }
 
   return c;
 }
 
-void child_destroy(child *c) {
+void child_delete(child *c) {
   if(!c) {
     return;
   }
@@ -96,6 +87,17 @@ void child_destroy(child *c) {
   free(c->argv);
   free(c);
 }
+
+
+struct hash *hash_children;
+
+static unsigned hash_child_hash(const struct hash_elem *e, void *aux);
+static bool hash_child_less(const struct hash_elem *a,
+                            const struct hash_elem *b,
+                            void *aux);
+static void hash_child_delete(struct hash_elem *e, void *aux);
+static child *hash_children_getChild(const tid_t tid);
+static void hash_children_deleteChild(const tid_t tid);
 
 static unsigned hash_child_hash(const struct hash_elem *e, void *aux UNUSED) {
   child *c = hash_entry(e, child, hash_elem);
@@ -111,9 +113,9 @@ static bool hash_child_less(const struct hash_elem *a,
   return ca->tid < cb->tid;
 }
 
-static void hash_child_destroy(struct hash_elem *e, void *aux UNUSED) {
+static void hash_child_delete(struct hash_elem *e, void *aux UNUSED) {
   child * c = hash_entry(e, child, hash_elem);
-  child_destroy(c);
+  child_delete(c);
 }
 
 static child *hash_children_getChild (const tid_t tid) {
@@ -123,6 +125,12 @@ static child *hash_children_getChild (const tid_t tid) {
   p.tid = tid;
   e = hash_find (hash_children, &p.hash_elem);
   return e != NULL ? hash_entry (e, child, hash_elem) : NULL;
+}
+
+static void hash_children_deleteChild(const tid_t tid) {
+  child *c = hash_children_getChild(tid);
+  hash_delete (hash_children, &c->hash_elem);
+  child_delete(c);
 }
 
 static thread_func start_process NO_RETURN;
@@ -150,13 +158,10 @@ process_execute (const char *prog)
   if (childProcess == NULL)
     return TID_ERROR;
 
-  /*sema_init(childProcess->sema, 0);*/
-  printf("hello\n" );
-
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
   if (tid == TID_ERROR)
-    child_destroy(childProcess);
+    child_delete(childProcess);
   else {
     childProcess->tid = tid;
     hash_insert(hash_children, &childProcess->hash_elem);
@@ -218,10 +223,21 @@ start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  child *c = hash_children_getChild(child_tid);	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
-  
+  int ret;
+  child *c;
+  if((c = hash_children_getChild(child_tid))) {
+    sema_down(c->sema);
+    ret = 0;
+  } else {
+    ret = -1;
+  }	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
+
+  printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
+
+  hash_children_deleteChild(child_tid);
+  return ret; /*return this if child_tid was valid*/
 }
 
 /* Free the current process's resources. */
@@ -247,6 +263,10 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  /*raise the semaphore for this child process*/
+  child *c = hash_children_getChild(thread_tid());
+  sema_up(c->sema);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -328,7 +348,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp, const child *childProcess);
+static bool setup_stack (void **esp, const child *cp);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -347,7 +367,6 @@ load (const child *childProcess, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-  printf("load\n" );
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -565,7 +584,7 @@ union mem_ptr {
 } mp;
 
 static bool
-setup_stack (void **esp, const child *childProcess) 
+setup_stack (void **esp, const child *cp) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -584,33 +603,24 @@ setup_stack (void **esp, const child *childProcess)
   /*@Nico: all of these variables created here can be part of child struct*/
   int i, j;
   char *arg;
+  int len;
 
-  /* inserting args on stack */
-  for(i = 0; i < childProcess->argc; ++i) {
-    arg = childProcess->argv[childProcess->argc - i - 1];
-    int len = strlen(arg);
+  /* inserting args on stack, including the file name (argv[0])*/
+  for(i = 0; i < cp->argc; ++i) {
+    arg = cp->argv[cp->argc - i - 1];
+    len = strlen(arg);
     for(j = 0; j <= len; ++j) {
       *(mp.c) = arg[len - j];
       --(mp.c);
     }
   }
 
-  /* Inserting filename on stack */
-  arg = childProcess->fname;
-  int len = strlen(arg);
-  for(j = 0; j <= len; ++j) {
-    *(mp.c) = arg[len - j];
-    --(mp.c);
-  }
-
-  while(((int) (mp.c + 1)) % sizeof(int)) {
+  while(((int) (mp.c + 1)) % sizeof(int)) { /*offset padding*/
     *(mp.c) = 0x00;
     --(mp.c);
   }
 
-  mp.c -= 3; /*move to the msb of this int*/
-
-  /*hex_dump(mp.c, mp.c, ((char*)(PHYS_BASE - 1) - mp.c ), true);*/
+  mp.c -= 3; /*move to the lsb of this int*/
   
   /*delimit end of argv array*/
   *(mp.i) = 0x0000;
@@ -619,18 +629,18 @@ setup_stack (void **esp, const child *childProcess)
   /*copy argument addresses to the stack*/
   int start = (int) PHYS_BASE;
   int total = 0;
-  for(i = 0; i < childProcess->argc; ++i) {
-    total += strlen(childProcess->argv[childProcess->argc - 1 - i]) + 1;
+  for(i = 0; i < cp->argc; ++i) {
+    total += strlen(cp->argv[cp->argc - 1 - i]) + 1;
     *(mp.i) = start - total;
     --(mp.i);
   }
 
   /*ptr to argv[0]*/
-  *(mp.i) = (int) mp.i + 1;
+  *(mp.i) = (int) (mp.i + 1);
   --(mp.i);
 
   /*argc*/
-  *(mp.i) = childProcess->argc;
+  *(mp.i) = cp->argc;
   --(mp.i);
 
   /*ret addr*/
