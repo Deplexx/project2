@@ -41,6 +41,72 @@ struct file_def{ /*contains all info of a currently opened file*/
 struct list open_file_list;/*contains all currently opend files*/
 struct list_elem* e;/*used for iterator*/
 
+
+/* Reads a byte at user virtual address UADDR.
+   UADDR must be below PHYS_BASE.
+   Returns the byte value if successful, -1 if a segfault
+   occurred. */
+static int
+get_user_byte (const uint8_t *uaddr)
+{
+  int result;
+  asm ("movl $1f, %0; movzbl %1, %0; 1:"
+       : "=&a" (result) : "m" (*uaddr));
+  return result;
+}
+ 
+/*same behavior as get_user_byte only now for a 32-bit int*/
+static int
+get_user_int (const uint32_t *uaddr) {
+  int i;
+
+  int ret;
+  uint8_t *caddr = (uint8_t*) uaddr;
+  char *cret = (char*) &ret;
+  for(i = 0; i < sizeof(uint32_t); ++i) {
+    if((cret[i] = get_user_byte(caddr)) == -1) {
+      ret = -1;
+      break;
+    }
+    
+    ++caddr;
+  }
+
+  return ret;
+}
+
+/* Writes BYTE to user address UDST.
+   UDST must be below PHYS_BASE.
+   Returns true if successful, false if a segfault occurred. */
+static bool
+put_user_byte (uint8_t *udst, uint8_t byte)
+{
+  int error_code;
+  asm ("movl $1f, %0; movb %b2, %1; 1:"
+       : "=&a" (error_code), "=m" (*udst) : "q" (byte));
+  return error_code != -1;
+}
+
+/*same behavior as put_user_byte only now for a 32-bit int*/
+static bool
+put_user_int (uint32_t *udst, uint32_t fourBytes) {
+  int i;
+
+  bool ret;
+  uint8_t *caddr = (uint8_t*) udst;
+  char *cwrt = (char*) &fourBytes;
+  for(i = 0; i < sizeof(uint32_t); ++i) {
+    if(!(ret = put_user_byte(caddr, cwrt[i]))) {
+      break;
+    }
+    
+    ++caddr;
+  }
+
+  return ret;
+}
+
+
 static void syscall_handler (struct intr_frame *);
 
 void
@@ -49,8 +115,6 @@ syscall_init (void)
   lock_init(&lock_filesys);
   fd_counter = 2; /*initialze fd and open_file list*/
   list_init (&open_file_list);
-  /*TODO:filesys_init needed?*/
-  /*filesys_init(true);*/
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -62,7 +126,10 @@ static void get_syscall_arg(int* esp, int num){
     if (!is_user_vaddr(param_ptr)){
       exit(-1);
     }
-    syscall_param[i] = *param_ptr;
+    
+    if((syscall_param[i] = get_user_int((const uint32_t*) param_ptr)) == -1) {
+      exit(-1);
+    }
   }
 }
 
@@ -95,11 +162,18 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   struct thread* cur_thread = thread_current();
 
-  int syscall_num = *((int*) f->esp);/*TODO: find this number*/
+  int syscall_num;
+  if(is_user_vaddr(f->esp)) {
+    if((syscall_num = get_user_int(f->esp)) == -1) {
+      exit(-1);
+    }
+  } else {
+    exit(-1);
+  }
 
   if ((syscall_num > SYS_INUMBER) || (syscall_num < SYS_HALT)){
     cur_thread->status = -1;
-    thread_exit();
+    thread_exit(-1);
   }
 
 
@@ -162,10 +236,8 @@ void halt(void){
   shutdown_power_off();
 }
 
-void exit(int status){
-  struct thread *cur_thread = thread_current(); 
-  cur_thread->status = status;
-  thread_exit();
+void exit(int status) {
+  thread_exit(status);
 }
 
 int exec(const char* cmd_line){

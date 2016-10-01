@@ -28,11 +28,12 @@ typedef struct struct_child {
   struct hash_elem hash_elem;
   char *prog;
   char *fname;
-  struct semaphore *sema; /*could be a simple variable*/
+  struct semaphore *sema;
   int argc;
   char **argv;
   tid_t tid;
   bool success_load;
+  int32_t exit_status;
 } child;
 
 child* child_new(const char *prog);
@@ -57,10 +58,12 @@ child *child_new(const char *prog) {
 
   c->tid = TID_ERROR;
 
+  c->exit_status = 0; /*default success for exit status*/
+
   char *prog_tok;
   char *rest_ptr;
 
-  /* Exteract and save file name */
+  /* Extract and save file name */
   c->argv[0] = c->fname = strtok_r(c->prog, " ", &rest_ptr);
 
   /*Extract and save args one by one, increment argc*/
@@ -79,8 +82,6 @@ child *child_new(const char *prog) {
 
 void child_delete(child *c) {
   if(!c) {
-  struct semaphore *sema; /*could be a simple variable*/
-  int argc;
     return;
   }
   
@@ -215,7 +216,7 @@ start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child
 
   /* If load failed, quit. */
   if (!success) 
-    thread_exit ();
+    thread_exit (-1);
 	
 	/* @Nico: before asm, make sure you sema_up or release the parent process using the argumet passed to this function */
   sema_up(childProcess->sema); /*wait for program to be loaded first*/
@@ -247,7 +248,7 @@ process_wait (tid_t child_tid)
   child *c;
   if((c = hash_children_getChild(child_tid))) {
     sema_down(c->sema);
-    ret = 0;
+    ret = c->exit_status;
   } else {
     ret = -1;
   }	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
@@ -260,7 +261,7 @@ process_wait (tid_t child_tid)
 
 /* Free the current process's resources. */
 void
-process_exit (void)	
+process_exit (int32_t exit_status)	
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -282,8 +283,9 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 
-  /*raise the semaphore for this child process*/
+  /*unblock calling process*/
   child *c = hash_children_getChild(thread_tid());
+  c->exit_status = exit_status;
   sema_up(c->sema);
 }
 
