@@ -30,13 +30,6 @@ bool create(const char* file, unsigned initial_size);
 
 bool remove(const char* file);
 
-void check_user_ptr(const void* ptr){
-  if (!is_user_vaddr(ptr)){
-    exit(-1);
-  }
-}
-
-
 struct file_def{ /*contains all info of a currently opened file*/
   struct list_elem elem;
   unsigned hash_num;
@@ -81,6 +74,15 @@ get_user_int (const uint32_t *uaddr) {
 
   return ret;
 }
+
+void check_user_ptr(const void* ptr){
+  if (!is_user_vaddr(ptr)){
+    exit(-1);
+  } if (get_user_byte(ptr) == -1){
+    exit(-1);
+  }
+}
+
 
 /* Writes BYTE to user address UDST.
    UDST must be below PHYS_BASE.
@@ -248,6 +250,7 @@ void exit(int status) {
 }
 
 int exec(const char* cmd_line){
+  check_user_ptr(cmd_line);
   int retval = process_execute(cmd_line);
   return retval;
 }
@@ -260,9 +263,6 @@ int wait(int pid){
 bool create(const char* file, unsigned initial_size){
   if(file == NULL) { exit(-1);}
   lock_acquire(&lock_filesys);	/*declares ownership of filesys*/
-  for (int i=0;i<15;i++){
-    
-  }
   check_user_ptr(file);
   bool retval = filesys_create(file,initial_size);
   lock_release(&lock_filesys);  /*release ownership*/
@@ -293,6 +293,7 @@ int open(const char* file){
     exit(-1);
     return -1;
   }
+  check_user_ptr(file);
   lock_acquire(&lock_filesys);
   struct file *fp = filesys_open(file);
   unsigned cur_hash_num = hash_string(file);
@@ -380,6 +381,8 @@ int read(int fd, void* buffer,unsigned size){
   lock_acquire(&lock_filesys);
   int32_t retval;
   /*read from keyboard*/
+  check_user_ptr(buffer);
+  if (size == 0) return 0;
   if (fd == 0){
     uint8_t *buffer_ = (uint8_t *)buffer;
     unsigned int i;
@@ -394,7 +397,7 @@ int read(int fd, void* buffer,unsigned size){
     lock_release(&lock_filesys);
     return 0;
   }
- retval = (int32_t)file_read(fp->opened_file,buffer,size);
+  retval = (int32_t)file_read(fp->opened_file,buffer,size);
 
   lock_release(&lock_filesys);
   return retval;
@@ -406,6 +409,8 @@ int write(int fd, const void* buffer, unsigned size){
   int32_t retval;
   unsigned counter = 0;
   /*write to console*/
+  check_user_ptr(buffer);
+  if (size == 0) return 0;
   if (fd == 1){
     /*call putbuf to putbuf()*/
     while(size > 512){
@@ -433,6 +438,7 @@ void seek(int fd, unsigned position){
   struct file_def* fp = find_file_def(fd);
    if (fp == NULL){
     lock_release(&lock_filesys);
+    return;
   }
  file_seek(fp->opened_file,position);
   lock_release(&lock_filesys);
@@ -454,10 +460,13 @@ unsigned tell(int fd){
 
 void close(int fd){
   lock_acquire(&lock_filesys);
+  if ((fd==0) || (fd==1)) exit(-1);
+
   struct file_def* fp = find_file_def(fd);
 
   if (fp == NULL){
     lock_release(&lock_filesys);
+    return;
   }
 
   /*close file*/
