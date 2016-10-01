@@ -32,6 +32,7 @@ typedef struct struct_child {
   int argc;
   char **argv;
   tid_t tid;
+  bool success_load;
 } child;
 
 child* child_new(const char *prog);
@@ -78,6 +79,8 @@ child *child_new(const char *prog) {
 
 void child_delete(child *c) {
   if(!c) {
+  struct semaphore *sema; /*could be a simple variable*/
+  int argc;
     return;
   }
   
@@ -160,12 +163,25 @@ process_execute (const char *prog)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
-  if (tid == TID_ERROR)
+  
+  /* not successful */
+  if (tid == TID_ERROR){
     child_delete(childProcess);
+    return -1;
+  }
+
+
+ /* successful thread create */
   else {
     childProcess->tid = tid;
     hash_insert(hash_children, &childProcess->hash_elem);
     sema_down(childProcess->sema); /*wait for child process to complete*/
+
+    if (childProcess->success_load == false)
+    {
+    	child_delete(childProcess);
+    	
+    }
   }
 
   return tid;
@@ -186,7 +202,9 @@ start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (childProcess, &if_.eip, &if_.esp); /* @Nico: you have two options: 1) Only send the file name to load... 
+  success = load (childProcess, &if_.eip, &if_.esp); 
+  childProcess->success_load = success;
+  							/* @Nico: you have two options: 1) Only send the file name to load... 
 							no args should be send to load.
 							In other words, make sure that file_name only contains the file name and no arguments
 							(example: if command line is "ls -l", only pass "ls" to load) The reason is that load 

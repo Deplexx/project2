@@ -1,16 +1,20 @@
-#include "userprog/process.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <hash.h>
+
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/process.h"
+
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
@@ -20,105 +24,161 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 
-//struct lock lock_stack;
+typedef struct struct_child {
+  struct hash_elem hash_elem;
+  char *prog;
+  char *fname;
+  struct semaphore *sema; /*could be a simple variable*/
+  int argc;
+  char **argv;
+  tid_t tid;
+  bool success_load;
+} child;
+
+child* child_new(const char *prog);
+void child_delete(child *c);
+
+child *child_new(const char *prog) {
+  child *c = (child*) malloc(sizeof(child));
+  c->prog = (char*) palloc_get_page(0);
+  c->sema = (struct semaphore*) malloc(sizeof(struct semaphore));
+  int argvMAX = 40;
+  c->argv = (char**) malloc(sizeof(char*) * 40); /* "40" needs to be changed*/
+
+  /* return null, if error with memory allocation */
+  if(!(c && c->prog && c->sema && c->argv)) {
+    child_delete(c);
+    return NULL;
+  }
+
+  strlcpy(c->prog, prog, PGSIZE);
+			    
+  sema_init(c->sema, 0);			
+
+  c->tid = TID_ERROR;
+
+  char *prog_tok;
+  char *rest_ptr;
+
+  /* Exteract and save file name */
+  c->argv[0] = c->fname = strtok_r(c->prog, " ", &rest_ptr);
+
+  /*Extract and save args one by one, increment argc*/
+  c->argc = 1;
+  while((prog_tok = strtok_r(rest_ptr, " ", &rest_ptr))) {
+    if(c->argc == argvMAX) {
+      c->argv = (char**) realloc(c->argv, (argvMAX *= 2) * sizeof(char*));
+    }
+
+    c->argv[c->argc] = prog_tok;
+    ++(c->argc);
+  }
+
+  return c;
+}
+
+void child_delete(child *c) {
+  if(!c) {
+    return;
+  }
+  
+  palloc_free_page (c->prog);
+  
+  free(c->sema);
+  free(c->argv);
+  free(c);
+}
+
+
+struct hash *hash_children;
+
+static unsigned hash_child_hash(const struct hash_elem *e, void *aux);
+static bool hash_child_less(const struct hash_elem *a,
+                            const struct hash_elem *b,
+                            void *aux);
+static void hash_child_delete(struct hash_elem *e, void *aux);
+static child *hash_children_getChild(const tid_t tid);
+static void hash_children_deleteChild(const tid_t tid);
+
+static unsigned hash_child_hash(const struct hash_elem *e, void *aux UNUSED) {
+  child *c = hash_entry(e, child, hash_elem);
+  return hash_int((int) c->tid);
+}
+
+static bool hash_child_less(const struct hash_elem *a,
+                            const struct hash_elem *b,
+			    void *aux UNUSED) {
+  child *ca = hash_entry(a, child, hash_elem);
+  child *cb = hash_entry(b, child, hash_elem);
+
+  return ca->tid < cb->tid;
+}
+
+static void hash_child_delete(struct hash_elem *e, void *aux UNUSED) {
+  child * c = hash_entry(e, child, hash_elem);
+  child_delete(c);
+}
+
+static child *hash_children_getChild (const tid_t tid) {
+  child p;
+  struct hash_elem *e;
+
+  p.tid = tid;
+  e = hash_find (hash_children, &p.hash_elem);
+  return e != NULL ? hash_entry (e, child, hash_elem) : NULL;
+}
+
+static void hash_children_deleteChild(const tid_t tid) {
+  child *c = hash_children_getChild(tid);
+  hash_delete (hash_children, &c->hash_elem);
+  child_delete(c);
+}
 
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (const child *childProcess, void (**eip) (void), void **esp);
+
+void process_init(void) {
+  hash_children = (struct hash*) malloc(sizeof(struct hash));
+  hash_init(hash_children, hash_child_hash, hash_child_less, NULL);
+}
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-union mem_ptr {
-  char *c;
-  int *i;
-} mp;
 
 tid_t
 process_execute (const char *prog) 
 {
-  //lock_acquire(&lock_stack);
-  char *prog_copy;
+  child *childProcess;
   tid_t tid;
-
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  prog_copy = palloc_get_page (0);
-  if (prog_copy == NULL)
+  childProcess = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
+  if (childProcess == NULL)
     return TID_ERROR;
-  strlcpy (prog_copy, prog, PGSIZE);
-
-  mp.c = (char*) PHYS_BASE;
-  char *temp;
-  char *prog_ptr = prog_copy;
-  char *prog_tok;
-  int div;
-  char *argv[PGSIZE];
-  int argc = 0;
-  int aggrLen = 0;
-  int i; //for-loop index
-  //copy the arguments onto the user stack
-  prog_tok = strtok_r(prog_ptr, " ", &temp);
-  prog_ptr = temp;
-  while(prog_tok) {
-    int len = strlen(prog_tok);
-    aggrLen += len + 1; //account for the '\0'
-    for(i = 0; i <= len; ++i) {
-      *(mp.c) = prog_tok[len - i]; //want the '\0' character
-      --(mp.c);
-    }
-    argv[i] = mp.c;
-    ++argc;
-    
-    prog_tok = strtok_r(prog_ptr, " ", &temp);
-    prog_ptr = temp;
-  }
-
-  //offset padding
-  div = aggrLen % sizeof(int); //obtain padding offset
-  if(div) {
-    for(i = 0; i < div; ++i) {
-      *(mp.c) = 0x00; //padding if needed
-      --(mp.c);
-    }
-  }
-
-  //delimit end of argv array
-  *(mp.i) = 0x0000;
-  --(mp.i);
-
-  //copy argument addresses to the stack
-  for(i = 0; i < argc; ++i) {
-    *(mp.i) = (int) argv[argc - i - 1];
-    --(mp.i);
-  }
-
-  //ptr to argv[0]
-  *(mp.i) = mp.i + 1;
-  --(mp.i);
-
-  //argc
-  *(mp.i) = argc;
-  --(mp.i);
-
-  //ret addr
-  *(mp.i) = 0;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (prog, PRI_DEFAULT, start_process, prog_copy);
+  tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
   if (tid == TID_ERROR)
-    palloc_free_page (prog_copy); 
-  
-  //lock_release(&lock_stack);
+    child_delete(childProcess);
+  else {
+    childProcess->tid = tid;
+    hash_insert(hash_children, &childProcess->hash_elem);
+    sema_down(childProcess->sema); /*wait for child process to complete*/
+  }
+
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child struct argument 
+									which will be passed to here by thead_creat func*/
 {
-  char *file_name = file_name_;
+  child *childProcess = (child*) cp;
   struct intr_frame if_;
   bool success;
 
@@ -127,19 +187,30 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  childProcess->success_load =  success = load (childProcess, &if_.eip, &if_.
+						        /* @Nico: you have two options: 1) Only send the file name to load... 
+							no args should be send to load.
+							In other words, make sure that file_name only contains the file name and no arguments
+							(example: if command line is "ls -l", only pass "ls" to load) The reason is that load 
+							also loads the file executable from disk onto the memory. If you choose this option,
+							then you need to do the setup_stack call here (after "if(!success)"), instead of doing 
+							it inside the load function 2) send the whole command and make sure in load function, 
+							you only pass file name to filesys_open without any arguments. */
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+	
+	/* @Nico: before asm, make sure you sema_up or release the parent process using the argumet passed to this function */
+  sema_up(childProcess->sema); /*wait for program to be loaded first*/
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
-     and jump to it. */
+     and jump to it. */  
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -154,14 +225,26 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+  int ret;
+  child *c;
+  if((c = hash_children_getChild(child_tid))) {
+    sema_down(c->sema);
+    ret = 0;
+  } else {
+    ret = -1;
+  }	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
+
+  printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
+
+  hash_children_deleteChild(child_tid);
+  return ret; /*return this if child_tid was valid*/
 }
 
 /* Free the current process's resources. */
 void
-process_exit (void)
+process_exit (void)	
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -182,6 +265,10 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  /*raise the semaphore for this child process*/
+  child *c = hash_children_getChild(thread_tid());
+  sema_up(c->sema);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -263,7 +350,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const child *cp);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -274,7 +361,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const child *childProcess, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -282,7 +369,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -290,10 +376,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (childProcess->fname);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", childProcess->fname);
       goto done; 
     }
 
@@ -306,7 +392,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", childProcess->fname);
       goto done; 
     }
 
@@ -370,7 +456,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, childProcess))
     goto done;
 
   /* Start address. */
@@ -381,6 +467,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+
   return success;
 }
 
@@ -494,8 +581,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
+union mem_ptr {
+  char *c;
+  int *i;
+} mp;
+
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const child *cp) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -509,6 +601,56 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  mp.c = (char*) PHYS_BASE - 1;
+  /*@Nico: all of these variables created here can be part of child struct*/
+  int i, j;
+  char *arg;
+  int len;
+
+  /* inserting args on stack, including the file name (argv[0])*/
+  for(i = 0; i < cp->argc; ++i) {
+    arg = cp->argv[cp->argc - i - 1];
+    len = strlen(arg);
+    for(j = 0; j <= len; ++j) {
+      *(mp.c) = arg[len - j];
+      --(mp.c);
+    }
+  }
+
+  while(((int) (mp.c + 1)) % sizeof(int)) { /*offset padding*/
+    *(mp.c) = 0x00;
+    --(mp.c);
+  }
+
+  mp.c -= 3; /*move to the lsb of this int*/
+  
+  /*delimit end of argv array*/
+  *(mp.i) = 0x0000;
+  --(mp.i);
+
+  /*copy argument addresses to the stack*/
+  int start = (int) PHYS_BASE;
+  int total = 0;
+  for(i = 0; i < cp->argc; ++i) {
+    total += strlen(cp->argv[cp->argc - 1 - i]) + 1;
+    *(mp.i) = start - total;
+    --(mp.i);
+  }
+
+  /*ptr to argv[0]*/
+  *(mp.i) = (int) (mp.i + 1);
+  --(mp.i);
+
+  /*argc*/
+  *(mp.i) = cp->argc;
+  --(mp.i);
+
+  /*ret addr*/
+  *(mp.i) = 0x0000; /*for now...*/
+
+  *esp = mp.i;
+
   return success;
 }
 
