@@ -30,6 +30,13 @@ bool create(const char* file, unsigned initial_size);
 
 bool remove(const char* file);
 
+void check_user_ptr(const void* ptr){
+  if (!is_user_vaddr(ptr)){
+    exit(-1);
+  }
+}
+
+
 struct file_def{ /*contains all info of a currently opened file*/
   struct list_elem elem;
   unsigned hash_num;
@@ -251,7 +258,12 @@ int wait(int pid){
 }
 
 bool create(const char* file, unsigned initial_size){
+  if(file == NULL) { exit(-1);}
   lock_acquire(&lock_filesys);	/*declares ownership of filesys*/
+  for (int i=0;i<15;i++){
+    
+  }
+  check_user_ptr(file);
   bool retval = filesys_create(file,initial_size);
   lock_release(&lock_filesys);  /*release ownership*/
   return retval;
@@ -277,6 +289,10 @@ bool remove(const char* file){
 }
 
 int open(const char* file){
+  if (file == NULL) { 
+    exit(-1);
+    return -1;
+  }
   lock_acquire(&lock_filesys);
   struct file *fp = filesys_open(file);
   unsigned cur_hash_num = hash_string(file);
@@ -295,8 +311,8 @@ int open(const char* file){
     lock_release(&lock_filesys);
     return -1;
   }
-  cur_file->hash_num = hash_string(file); 
-  cur_file->file_str = (char*) malloc(sizeof(file));
+  cur_file->hash_num = cur_hash_num; 
+  cur_file->file_str = (char*) malloc(15);
 
   if (cur_file->file_str == NULL){
     free(cur_file);
@@ -304,21 +320,13 @@ int open(const char* file){
     lock_release(&lock_filesys);
     return -1;
   }
-  
-  while(file_str_ptr!=0){
+
+  for (i = 0; i < 15; i++){
     *(cur_file->file_str+i) = *(file_str_ptr+i);
-    i++;
   }
 
   cur_file->opened_file = fp;
   cur_file->fd = fd_counter;
-
-  //add newly opened file to opened file list*/
-  list_push_back(&open_file_list,&(cur_file->elem));
-
-  /*fd_counter calculation*/
-  ++fd_counter;
-  if ((fd_counter == 0) || (fd_counter == 1)) fd_counter = 2;
 
   /*close same file in linklist, call close function*/
   for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
@@ -330,6 +338,13 @@ int open(const char* file){
       }
     }
   }
+
+  //add newly opened file to opened file list*/
+  list_push_back(&open_file_list,&(cur_file->elem));
+
+  /*fd_counter calculation*/
+  ++fd_counter;
+  if ((fd_counter == 0) || (fd_counter == 1)) fd_counter = 2;
 
 
   lock_release(&lock_filesys);
@@ -386,6 +401,7 @@ int read(int fd, void* buffer,unsigned size){
 }
 
 int write(int fd, const void* buffer, unsigned size){
+  if (size == 0) {return 0;}
   lock_acquire(&lock_filesys);
   int32_t retval;
   unsigned counter = 0;
