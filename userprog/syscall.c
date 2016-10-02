@@ -342,8 +342,10 @@ int open(const char* file){
     struct file_def* fp = list_entry(e,struct file_def, elem);
     if (cur_hash_num == fp->hash_num){
       if (strcmp(file,fp->file_str)==0){
+        lock_release(&lock_filesys);
 	close(fp->fd);	
-	list_remove(&(fp->elem));	
+        lock_acquire(&lock_filesys);
+        break;
       }
     }
   }
