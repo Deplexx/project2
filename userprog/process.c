@@ -169,20 +169,10 @@ process_execute (const char *prog)
   if (tid == TID_ERROR){
     child_delete(childProcess);
     return -1;
-  }
-
-
- /* successful thread create */
-  else {
+  } else {
     childProcess->tid = tid;
     hash_insert(hash_children, &childProcess->hash_elem);
     sema_down(childProcess->sema); /*wait for child process to complete*/
-
-    if (childProcess->success_load == false)
-    {
-    	child_delete(childProcess);
-    	
-    }
   }
 
   return tid;
@@ -400,7 +390,7 @@ load (const child *childProcess, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", childProcess->fname);
       goto done; 
     }
-
+  
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)

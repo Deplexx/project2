@@ -250,9 +250,17 @@ void exit(int status) {
 }
 
 int exec(const char* cmd_line){
+  tid_t tid;
   check_user_ptr(cmd_line);
-  int retval = process_execute(cmd_line);
-  return retval;
+  if(!filesys_create(cmd_line, 1)) {
+    tid = process_execute(cmd_line);
+    return tid;
+  } else {
+    filesys_remove(cmd_line);
+    tid = TID_ERROR;
+  }
+
+  return tid;
 }
 
 int wait(int pid){
