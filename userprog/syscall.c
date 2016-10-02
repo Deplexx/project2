@@ -52,6 +52,7 @@ get_user_byte (const uint8_t *uaddr)
   int result;
   asm ("movl $1f, %0; movzbl %1, %0; 1:"
        : "=&a" (result) : "m" (*uaddr));
+
   return result;
 }
  
@@ -74,6 +75,8 @@ get_user_int (const uint32_t *uaddr) {
 
   return ret;
 }
+
+void check_user_ptr(const void* ptr);
 
 void check_user_ptr(const void* ptr){
   if (!is_user_vaddr(ptr)){
@@ -135,10 +138,7 @@ static void get_syscall_arg(int* esp, int num){
     if (!is_user_vaddr(param_ptr)){
       exit(-1);
     }
-    
-    if((syscall_param[i] = get_user_int((const uint32_t*) param_ptr)) == -1) {
-      exit(-1);
-    }
+    syscall_param[i] = *param_ptr;
   }
 }
 
@@ -378,11 +378,11 @@ int filesize(int fd){
 }
 
 int read(int fd, void* buffer,unsigned size){
-  lock_acquire(&lock_filesys);
   int32_t retval;
-  /*read from keyboard*/
-  check_user_ptr(buffer);
   if (size == 0) return 0;
+  check_user_ptr(buffer);
+  lock_acquire(&lock_filesys);
+  /*read from keyboard*/
   if (fd == 0){
     uint8_t *buffer_ = (uint8_t *)buffer;
     unsigned int i;
@@ -404,12 +404,12 @@ int read(int fd, void* buffer,unsigned size){
 }
 
 int write(int fd, const void* buffer, unsigned size){
-  if (size == 0) {return 0;}
-  lock_acquire(&lock_filesys);
   int32_t retval;
   unsigned counter = 0;
-  /*write to console*/
+  if (size == 0) {return 0;}
   check_user_ptr(buffer);
+  lock_acquire(&lock_filesys);
+  /*write to console*/
   if (size == 0) return 0;
   if (fd == 1){
     /*call putbuf to putbuf()*/
@@ -427,7 +427,7 @@ int write(int fd, const void* buffer, unsigned size){
     lock_release(&lock_filesys);
     return 0;
   }
- retval = (int32_t)file_write(fp->opened_file,buffer,size);
+   retval = (int32_t)file_write(fp->opened_file,buffer,size);
   lock_release(&lock_filesys);
   
   return retval;
