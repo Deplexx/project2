@@ -1,3 +1,4 @@
+irenezhang@ubuntu:~/Documents/OS/project2/userprog/build$ make check
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/args-none -a args-none -- -q  -f run args-none < /dev/null 2> tests/userprog/args-none.errors > tests/userprog/args-none.output
 perl -I../.. ../../tests/userprog/args-none.ck tests/userprog/args-none tests/userprog/args-none.result
 pass tests/userprog/args-none
@@ -39,15 +40,10 @@ perl -I../.. ../../tests/userprog/create-empty.ck tests/userprog/create-empty te
 pass tests/userprog/create-empty
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/create-null -a create-null -- -q  -f run create-null < /dev/null 2> tests/userprog/create-null.errors > tests/userprog/create-null.output
 perl -I../.. ../../tests/userprog/create-null.ck tests/userprog/create-null tests/userprog/create-null.result
-FAIL tests/userprog/create-null
-Kernel panic in run: PANIC at ../../filesys/directory.c:149 in dir_add(): assertion `name != NULL' failed.
-Call stack: 0xc0028324
-Translation of call stack:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
+pass tests/userprog/create-null
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/create-bad-ptr -a create-bad-ptr -- -q  -f run create-bad-ptr < /dev/null 2> tests/userprog/create-bad-ptr.errors > tests/userprog/create-bad-ptr.output
 perl -I../.. ../../tests/userprog/create-bad-ptr.ck tests/userprog/create-bad-ptr tests/userprog/create-bad-ptr.result
-FAIL tests/userprog/create-bad-ptr
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/create-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/create-long -a create-long -- -q  -f run create-long < /dev/null 2> tests/userprog/create-long.errors > tests/userprog/create-long.output
 perl -I../.. ../../tests/userprog/create-long.ck tests/userprog/create-long tests/userprog/create-long.result
 pass tests/userprog/create-long
@@ -59,129 +55,68 @@ perl -I../.. ../../tests/userprog/create-bound.ck tests/userprog/create-bound te
 pass tests/userprog/create-bound
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-normal -a open-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run open-normal < /dev/null 2> tests/userprog/open-normal.errors > tests/userprog/open-normal.output
 perl -I../.. ../../tests/userprog/open-normal.ck tests/userprog/open-normal tests/userprog/open-normal.result
-FAIL tests/userprog/open-normal
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/open-normal
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-missing -a open-missing -- -q  -f run open-missing < /dev/null 2> tests/userprog/open-missing.errors > tests/userprog/open-missing.output
 perl -I../.. ../../tests/userprog/open-missing.ck tests/userprog/open-missing tests/userprog/open-missing.result
 pass tests/userprog/open-missing
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-boundary -a open-boundary -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run open-boundary < /dev/null 2> tests/userprog/open-boundary.errors > tests/userprog/open-boundary.output
 perl -I../.. ../../tests/userprog/open-boundary.ck tests/userprog/open-boundary tests/userprog/open-boundary.result
-FAIL tests/userprog/open-boundary
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/open-boundary
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-empty -a open-empty -- -q  -f run open-empty < /dev/null 2> tests/userprog/open-empty.errors > tests/userprog/open-empty.output
 perl -I../.. ../../tests/userprog/open-empty.ck tests/userprog/open-empty tests/userprog/open-empty.result
 pass tests/userprog/open-empty
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-null -a open-null -- -q  -f run open-null < /dev/null 2> tests/userprog/open-null.errors > tests/userprog/open-null.output
 perl -I../.. ../../tests/userprog/open-null.ck tests/userprog/open-null tests/userprog/open-null.result
-FAIL tests/userprog/open-null
-Kernel panic in run: PANIC at ../../filesys/directory.c:125 in dir_lookup(): assertion `name != NULL' failed.
-Call stack: 0xc0028324 0xc002cc73 0xc002b9be 0xc0021c1a 0xc0021e44 0x804a034
-Translation of call stack:
-In kernel.o:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc002cc73: dir_lookup (..../filesys/directory.c:127)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/userprog/open-null:
-0x0804a034: open (...../lib/user/syscall.c:105)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+pass tests/userprog/open-null
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-bad-ptr -a open-bad-ptr -- -q  -f run open-bad-ptr < /dev/null 2> tests/userprog/open-bad-ptr.errors > tests/userprog/open-bad-ptr.output
 perl -I../.. ../../tests/userprog/open-bad-ptr.ck tests/userprog/open-bad-ptr tests/userprog/open-bad-ptr.result
-FAIL tests/userprog/open-bad-ptr
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/open-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-twice -a open-twice -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run open-twice < /dev/null 2> tests/userprog/open-twice.errors > tests/userprog/open-twice.output
 perl -I../.. ../../tests/userprog/open-twice.ck tests/userprog/open-twice tests/userprog/open-twice.result
 FAIL tests/userprog/open-twice
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-normal -a close-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run close-normal < /dev/null 2> tests/userprog/close-normal.errors > tests/userprog/close-normal.output
-perl -I../.. ../../tests/userprog/close-normal.ck tests/userprog/close-normal tests/userprog/close-normal.result
-FAIL tests/userprog/close-normal
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-twice -a close-twice -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run close-twice < /dev/null 2> tests/userprog/close-twice.errors > tests/userprog/close-twice.output
-perl -I../.. ../../tests/userprog/close-twice.ck tests/userprog/close-twice tests/userprog/close-twice.result
-FAIL tests/userprog/close-twice
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-  (close-twice) close "sample.txt"
-  (close-twice) close "sample.txt" again
-  (close-twice) end
-  close-twice: exit(0)
-Differences in `diff -u' format:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-- (close-twice) close "sample.txt"
-- (close-twice) close "sample.txt" again
-- (close-twice) end
-- close-twice: exit(0)
-+ close-twice: exit(-1)
-Acceptable output:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-  (close-twice) close "sample.txt"
-  (close-twice) close "sample.txt" again
-  close-twice: exit(-1)
-Differences in `diff -u' format:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-- (close-twice) close "sample.txt"
-- (close-twice) close "sample.txt" again
-  close-twice: exit(-1)
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-stdin -a close-stdin -- -q  -f run close-stdin < /dev/null 2> tests/userprog/close-stdin.errors > tests/userprog/close-stdin.output
-perl -I../.. ../../tests/userprog/close-stdin.ck tests/userprog/close-stdin tests/userprog/close-stdin.result
-FAIL tests/userprog/close-stdin
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-stdout -a close-stdout -- -q  -f run close-stdout < /dev/null 2> tests/userprog/close-stdout.errors > tests/userprog/close-stdout.output
-perl -I../.. ../../tests/userprog/close-stdout.ck tests/userprog/close-stdout tests/userprog/close-stdout.result
-FAIL tests/userprog/close-stdout
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-bad-fd -a close-bad-fd -- -q  -f run close-bad-fd < /dev/null 2> tests/userprog/close-bad-fd.errors > tests/userprog/close-bad-fd.output
-perl -I../.. ../../tests/userprog/close-bad-fd.ck tests/userprog/close-bad-fd tests/userprog/close-bad-fd.result
-FAIL tests/userprog/close-bad-fd
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-normal -a read-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-normal < /dev/null 2> tests/userprog/read-normal.errors > tests/userprog/read-normal.output
-perl -I../.. ../../tests/userprog/read-normal.ck tests/userprog/read-normal tests/userprog/read-normal.result
-FAIL tests/userprog/read-normal
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-bad-ptr -a read-bad-ptr -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-bad-ptr < /dev/null 2> tests/userprog/read-bad-ptr.errors > tests/userprog/read-bad-ptr.output
-perl -I../.. ../../tests/userprog/read-bad-ptr.ck tests/userprog/read-bad-ptr tests/userprog/read-bad-ptr.result
-FAIL tests/userprog/read-bad-ptr
-run: TIMEOUT after 60 seconds of host CPU time
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-boundary -a read-boundary -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-boundary < /dev/null 2> tests/userprog/read-boundary.errors > tests/userprog/read-boundary.output
-perl -I../.. ../../tests/userprog/read-boundary.ck tests/userprog/read-boundary tests/userprog/read-boundary.result
-FAIL tests/userprog/read-boundary
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44 0x804a15c
+Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
+Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804a609 0x80480ba 0x8048186 0x80487c6
 Translation of call stack:
 In kernel.o:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
+0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
+0xc0022d75: lock_acquire (...../../threads/synch.c:199)
+0xc002e18c: close (...../userprog/syscall.c:471)
+0xc002dd41: open (...../userprog/syscall.c:346)
+0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
 0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
 0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/userprog/read-boundary:
-0x0804a15c: open (...../lib/user/syscall.c:105)
+In tests/userprog/open-twice:
+0x0804a609: open (...../lib/user/syscall.c:105)
+0x080480ba: test_main (.../userprog/open-twice.c:13)
+0x08048186: main (...ild/../../tests/main.c:13)
+0x080487c6: _start (.../../../lib/user/entry.c:9)
 Translations of user virtual addresses above are based on a guess at
 the binary to use.  If this guess is incorrect, then those
 translations will be misleading.
-pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-zero -a read-zero -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-zero < /dev/null 2> tests/userprog/read-zero.errors > tests/userprog/read-zero.output
-perl -I../.. ../../tests/userprog/read-zero.ck tests/userprog/read-zero tests/userprog/read-zero.result
-FAIL tests/userprog/read-zero
-run: TIMEOUT after 60 seconds of host CPU time
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-normal -a close-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run close-normal < /dev/null 2> tests/userprog/close-normal.errors > tests/userprog/close-normal.output
+perl -I../.. ../../tests/userprog/close-normal.ck tests/userprog/close-normal tests/userprog/close-normal.result
+pass tests/userprog/close-normal
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-twice -a close-twice -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run close-twice < /dev/null 2> tests/userprog/close-twice.errors > tests/userprog/close-twice.output
+perl -I../.. ../../tests/userprog/close-twice.ck tests/userprog/close-twice tests/userprog/close-twice.result
+pass tests/userprog/close-twice
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-stdin -a close-stdin -- -q  -f run close-stdin < /dev/null 2> tests/userprog/close-stdin.errors > tests/userprog/close-stdin.output
+perl -I../.. ../../tests/userprog/close-stdin.ck tests/userprog/close-stdin tests/userprog/close-stdin.result
+pass tests/userprog/close-stdin
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-stdout -a close-stdout -- -q  -f run close-stdout < /dev/null 2> tests/userprog/close-stdout.errors > tests/userprog/close-stdout.output
+perl -I../.. ../../tests/userprog/close-stdout.ck tests/userprog/close-stdout tests/userprog/close-stdout.result
+pass tests/userprog/close-stdout
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-bad-fd -a close-bad-fd -- -q  -f run close-bad-fd < /dev/null 2> tests/userprog/close-bad-fd.errors > tests/userprog/close-bad-fd.output
+perl -I../.. ../../tests/userprog/close-bad-fd.ck tests/userprog/close-bad-fd tests/userprog/close-bad-fd.result
+pass tests/userprog/close-bad-fd
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-normal -a read-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-normal < /dev/null 2> tests/userprog/read-normal.errors > tests/userprog/read-normal.output
+perl -I../.. ../../tests/userprog/read-normal.ck tests/userprog/read-normal tests/userprog/read-normal.result
+pass tests/userprog/read-normal
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-bad-ptr -a read-bad-ptr -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-bad-ptr < /dev/null 2> tests/userprog/read-bad-ptr.errors > tests/userprog/read-bad-ptr.output
+perl -I../.. ../../tests/userprog/read-bad-ptr.ck tests/userprog/read-bad-ptr tests/userprog/read-bad-ptr.result
+pass tests/userprog/read-bad-ptr
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-boundary -a read-boundary -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-boundary < /dev/null 2> tests/userprog/read-boundary.errors > tests/userprog/read-boundary.output
+perl -I../.. ../../tests/userprog/read-boundary.ck tests/userprog/read-boundary tests/userprog/read-boundary.result
+pass tests/userprog/read-boundary
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-stdout -a read-stdout -- -q  -f run read-stdout < /dev/null 2> tests/userprog/read-stdout.errors > tests/userprog/read-stdout.output
 perl -I../.. ../../tests/userprog/read-stdout.ck tests/userprog/read-stdout tests/userprog/read-stdout.result
 pass tests/userprog/read-stdout
@@ -190,42 +125,16 @@ perl -I../.. ../../tests/userprog/read-bad-fd.ck tests/userprog/read-bad-fd test
 pass tests/userprog/read-bad-fd
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/write-normal -a write-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run write-normal < /dev/null 2> tests/userprog/write-normal.errors > tests/userprog/write-normal.output
 perl -I../.. ../../tests/userprog/write-normal.ck tests/userprog/write-normal tests/userprog/write-normal.result
-FAIL tests/userprog/write-normal
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/write-normal
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/write-bad-ptr -a write-bad-ptr -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run write-bad-ptr < /dev/null 2> tests/userprog/write-bad-ptr.errors > tests/userprog/write-bad-ptr.output
 perl -I../.. ../../tests/userprog/write-bad-ptr.ck tests/userprog/write-bad-ptr tests/userprog/write-bad-ptr.result
-FAIL tests/userprog/write-bad-ptr
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/write-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/write-boundary -a write-boundary -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run write-boundary < /dev/null 2> tests/userprog/write-boundary.errors > tests/userprog/write-boundary.output
 perl -I../.. ../../tests/userprog/write-boundary.ck tests/userprog/write-boundary tests/userprog/write-boundary.result
-FAIL tests/userprog/write-boundary
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44 0x804a11d
-Translation of call stack:
-In kernel.o:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/userprog/write-boundary:
-0x0804a11d: open (...../lib/user/syscall.c:105)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+pass tests/userprog/write-boundary
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/write-zero -a write-zero -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run write-zero < /dev/null 2> tests/userprog/write-zero.errors > tests/userprog/write-zero.output
 perl -I../.. ../../tests/userprog/write-zero.ck tests/userprog/write-zero tests/userprog/write-zero.result
-FAIL tests/userprog/write-zero
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/write-zero
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/write-stdin -a write-stdin -- -q  -f run write-stdin < /dev/null 2> tests/userprog/write-stdin.errors > tests/userprog/write-stdin.output
 perl -I../.. ../../tests/userprog/write-stdin.ck tests/userprog/write-stdin tests/userprog/write-stdin.result
 pass tests/userprog/write-stdin
@@ -248,18 +157,6 @@ Test output failed to match any acceptable form.
 
 Acceptable output:
   (exec-missing) begin
-  (exec-missing) exec("no-such-file"): -1
-  (exec-missing) end
-  exec-missing: exit(0)
-Differences in `diff -u' format:
-  (exec-missing) begin
-- (exec-missing) exec("no-such-file"): -1
-+ load: no-such-file: open failed
-+ (exec-missing) exec("no-such-file"): 4
-  (exec-missing) end
-  exec-missing: exit(0)
-Acceptable output:
-  (exec-missing) begin
   load: no-such-file: open failed
   (exec-missing) exec("no-such-file"): -1
   no-such-file: exit(-1)
@@ -283,6 +180,18 @@ Differences in `diff -u' format:
   (exec-missing) begin
   load: no-such-file: open failed
 - (exec-missing) exec("no-such-file"): -1
++ (exec-missing) exec("no-such-file"): 4
+  (exec-missing) end
+  exec-missing: exit(0)
+Acceptable output:
+  (exec-missing) begin
+  (exec-missing) exec("no-such-file"): -1
+  (exec-missing) end
+  exec-missing: exit(0)
+Differences in `diff -u' format:
+  (exec-missing) begin
+- (exec-missing) exec("no-such-file"): -1
++ load: no-such-file: open failed
 + (exec-missing) exec("no-such-file"): 4
   (exec-missing) end
   exec-missing: exit(0)
@@ -303,8 +212,7 @@ Differences in `diff -u' format:
   exec-missing: exit(0)
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/exec-bad-ptr -a exec-bad-ptr -- -q  -f run exec-bad-ptr < /dev/null 2> tests/userprog/exec-bad-ptr.errors > tests/userprog/exec-bad-ptr.output
 perl -I../.. ../../tests/userprog/exec-bad-ptr.ck tests/userprog/exec-bad-ptr tests/userprog/exec-bad-ptr.result
-FAIL tests/userprog/exec-bad-ptr
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/userprog/exec-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/wait-simple -a wait-simple -p tests/userprog/child-simple -a child-simple -- -q  -f run wait-simple < /dev/null 2> tests/userprog/wait-simple.errors > tests/userprog/wait-simple.output
 perl -I../.. ../../tests/userprog/wait-simple.ck tests/userprog/wait-simple tests/userprog/wait-simple.result
 pass tests/userprog/wait-simple
@@ -321,154 +229,59 @@ FAIL tests/userprog/wait-bad-pid
 run: TIMEOUT after 60 seconds of host CPU time
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/multi-recurse -a multi-recurse -- -q  -f run 'multi-recurse 15' < /dev/null 2> tests/userprog/multi-recurse.errors > tests/userprog/multi-recurse.output
 perl -I../.. ../../tests/userprog/multi-recurse.ck tests/userprog/multi-recurse tests/userprog/multi-recurse.result
-FAIL tests/userprog/multi-recurse
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (multi-recurse) begin 15
-  (multi-recurse) exec("multi-recurse 14")
-  (multi-recurse) begin 14
-  (multi-recurse) exec("multi-recurse 13")
-  (multi-recurse) begin 13
-  (multi-recurse) exec("multi-recurse 12")
-  (multi-recurse) begin 12
-  (multi-recurse) exec("multi-recurse 11")
-  (multi-recurse) begin 11
-  (multi-recurse) exec("multi-recurse 10")
-  (multi-recurse) begin 10
-  (multi-recurse) exec("multi-recurse 9")
-  (multi-recurse) begin 9
-  (multi-recurse) exec("multi-recurse 8")
-  (multi-recurse) begin 8
-  (multi-recurse) exec("multi-recurse 7")
-  (multi-recurse) begin 7
-  (multi-recurse) exec("multi-recurse 6")
-  (multi-recurse) begin 6
-  (multi-recurse) exec("multi-recurse 5")
-  (multi-recurse) begin 5
-  (multi-recurse) exec("multi-recurse 4")
-  (multi-recurse) begin 4
-  (multi-recurse) exec("multi-recurse 3")
-  (multi-recurse) begin 3
-  (multi-recurse) exec("multi-recurse 2")
-  (multi-recurse) begin 2
-  (multi-recurse) exec("multi-recurse 1")
-  (multi-recurse) begin 1
-  (multi-recurse) exec("multi-recurse 0")
-  (multi-recurse) begin 0
-  (multi-recurse) end 0
-  multi-recurse: exit(0)
-  (multi-recurse) end 1
-  multi-recurse: exit(1)
-  (multi-recurse) end 2
-  multi-recurse: exit(2)
-  (multi-recurse) end 3
-  multi-recurse: exit(3)
-  (multi-recurse) end 4
-  multi-recurse: exit(4)
-  (multi-recurse) end 5
-  multi-recurse: exit(5)
-  (multi-recurse) end 6
-  multi-recurse: exit(6)
-  (multi-recurse) end 7
-  multi-recurse: exit(7)
-  (multi-recurse) end 8
-  multi-recurse: exit(8)
-  (multi-recurse) end 9
-  multi-recurse: exit(9)
-  (multi-recurse) end 10
-  multi-recurse: exit(10)
-  (multi-recurse) end 11
-  multi-recurse: exit(11)
-  (multi-recurse) end 12
-  multi-recurse: exit(12)
-  (multi-recurse) end 13
-  multi-recurse: exit(13)
-  (multi-recurse) end 14
-  multi-recurse: exit(14)
-  (multi-recurse) end 15
-  multi-recurse: exit(15)
-Differences in `diff -u' format:
-  (multi-recurse) begin 15
-  (multi-recurse) exec("multi-recurse 14")
-- (multi-recurse) begin 14
-- (multi-recurse) exec("multi-recurse 13")
-- (multi-recurse) begin 13
-- (multi-recurse) exec("multi-recurse 12")
-- (multi-recurse) begin 12
-- (multi-recurse) exec("multi-recurse 11")
-- (multi-recurse) begin 11
-- (multi-recurse) exec("multi-recurse 10")
-- (multi-recurse) begin 10
-- (multi-recurse) exec("multi-recurse 9")
-- (multi-recurse) begin 9
-- (multi-recurse) exec("multi-recurse 8")
-- (multi-recurse) begin 8
-- (multi-recurse) exec("multi-recurse 7")
-- (multi-recurse) begin 7
-- (multi-recurse) exec("multi-recurse 6")
-- (multi-recurse) begin 6
-- (multi-recurse) exec("multi-recurse 5")
-- (multi-recurse) begin 5
-- (multi-recurse) exec("multi-recurse 4")
-- (multi-recurse) begin 4
-- (multi-recurse) exec("multi-recurse 3")
-- (multi-recurse) begin 3
-- (multi-recurse) exec("multi-recurse 2")
-- (multi-recurse) begin 2
-- (multi-recurse) exec("multi-recurse 1")
-- (multi-recurse) begin 1
-- (multi-recurse) exec("multi-recurse 0")
-- (multi-recurse) begin 0
-- (multi-recurse) end 0
-- multi-recurse: exit(0)
-- (multi-recurse) end 1
-- multi-recurse: exit(1)
-- (multi-recurse) end 2
-- multi-recurse: exit(2)
-- (multi-recurse) end 3
-- multi-recurse: exit(3)
-- (multi-recurse) end 4
-- multi-recurse: exit(4)
-- (multi-recurse) end 5
-- multi-recurse: exit(5)
-- (multi-recurse) end 6
-- multi-recurse: exit(6)
-- (multi-recurse) end 7
-- multi-recurse: exit(7)
-- (multi-recurse) end 8
-- multi-recurse: exit(8)
-- (multi-recurse) end 9
-- multi-recurse: exit(9)
-- (multi-recurse) end 10
-- multi-recurse: exit(10)
-- (multi-recurse) end 11
-- multi-recurse: exit(11)
-- (multi-recurse) end 12
-- multi-recurse: exit(12)
-- (multi-recurse) end 13
-- multi-recurse: exit(13)
-- (multi-recurse) end 14
-- multi-recurse: exit(14)
-- (multi-recurse) end 15
-- multi-recurse: exit(15)
-+ multi-recurse: exit(-1)
+pass tests/userprog/multi-recurse
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/multi-child-fd -a multi-child-fd -p ../../tests/userprog/sample.txt -a sample.txt -p tests/userprog/child-close -a child-close -- -q  -f run multi-child-fd < /dev/null 2> tests/userprog/multi-child-fd.errors > tests/userprog/multi-child-fd.output
 perl -I../.. ../../tests/userprog/multi-child-fd.ck tests/userprog/multi-child-fd tests/userprog/multi-child-fd.result
 FAIL tests/userprog/multi-child-fd
-run: TIMEOUT after 60 seconds of host CPU time
+run: read of 239 bytes at offset 0 in "sample.txt" returned 0: FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-simple -a rox-simple -- -q  -f run rox-simple < /dev/null 2> tests/userprog/rox-simple.errors > tests/userprog/rox-simple.output
 perl -I../.. ../../tests/userprog/rox-simple.ck tests/userprog/rox-simple tests/userprog/rox-simple.result
 FAIL tests/userprog/rox-simple
-run: TIMEOUT after 60 seconds of host CPU time
+run: try to write "rox-simple": FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-child -a rox-child -p tests/userprog/child-rox -a child-rox -- -q  -f run rox-child < /dev/null 2> tests/userprog/rox-child.errors > tests/userprog/rox-child.output
 perl -I../.. ../../tests/userprog/rox-child.ck tests/userprog/rox-child tests/userprog/rox-child.result
 FAIL tests/userprog/rox-child
-run: TIMEOUT after 60 seconds of host CPU time
+Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
+Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804ab62 0x80480db 0x804816d 0x80488b1
+Translation of call stack:
+In kernel.o:
+0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
+0xc0022d75: lock_acquire (...../../threads/synch.c:199)
+0xc002e18c: close (...../userprog/syscall.c:471)
+0xc002dd41: open (...../userprog/syscall.c:346)
+0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
+0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
+0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+0x0804ab62: (unknown)
+In tests/userprog/rox-child:
+0x080480db: test_main (...userprog/rox-child.inc:17)
+0x0804816d: test_main (...userprog/rox-child.inc:24)
+0x080488b1: swap_byte (...ild/../../lib/random.c:28)
+Translations of user virtual addresses above are based on a guess at
+the binary to use.  If this guess is incorrect, then those
+translations will be misleading.
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-multichild -a rox-multichild -p tests/userprog/child-rox -a child-rox -- -q  -f run rox-multichild < /dev/null 2> tests/userprog/rox-multichild.errors > tests/userprog/rox-multichild.output
 perl -I../.. ../../tests/userprog/rox-multichild.ck tests/userprog/rox-multichild tests/userprog/rox-multichild.result
 FAIL tests/userprog/rox-multichild
-run: TIMEOUT after 60 seconds of host CPU time
+Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
+Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804ab62 0x80480db 0x804816d 0x80488b1
+Translation of call stack:
+In kernel.o:
+0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
+0xc0022d75: lock_acquire (...../../threads/synch.c:199)
+0xc002e18c: close (...../userprog/syscall.c:471)
+0xc002dd41: open (...../userprog/syscall.c:346)
+0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
+0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
+0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+0x0804ab62: (unknown)
+In tests/userprog/rox-multichild:
+0x080480db: test_main (...userprog/rox-child.inc:17)
+0x0804816d: test_main (...userprog/rox-child.inc:24)
+0x080488b1: swap_byte (...ild/../../lib/random.c:28)
+Translations of user virtual addresses above are based on a guess at
+the binary to use.  If this guess is incorrect, then those
+translations will be misleading.
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/bad-read -a bad-read -- -q  -f run bad-read < /dev/null 2> tests/userprog/bad-read.errors > tests/userprog/bad-read.output
 perl -I../.. ../../tests/userprog/bad-read.ck tests/userprog/bad-read tests/userprog/bad-read.result
 pass tests/userprog/bad-read
@@ -490,219 +303,66 @@ pass tests/userprog/bad-jump2
 pintos -v -k -T 360 --qemu  --filesys-size=2 -p tests/userprog/no-vm/multi-oom -a multi-oom -- -q  -f run multi-oom < /dev/null 2> tests/userprog/no-vm/multi-oom.errors > tests/userprog/no-vm/multi-oom.output
 perl -I../.. ../../tests/userprog/no-vm/multi-oom.ck tests/userprog/no-vm/multi-oom tests/userprog/no-vm/multi-oom.result
 FAIL tests/userprog/no-vm/multi-oom
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (multi-oom) begin
-  (multi-oom) success. program forked 10 times.
-  (multi-oom) end
-Differences in `diff -u' format:
-  (multi-oom) begin
-- (multi-oom) success. program forked 10 times.
-- (multi-oom) end
-
-(Process exit codes are excluded for matching purposes.)
-
-(User fault messages are excluded for matching purposes.)
+Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
+Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804acbc 0x804810d 0x8048132 0x804824e 0x8048a0b
+Translation of call stack:
+In kernel.o:
+0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
+0xc0022d75: lock_acquire (...../../threads/synch.c:199)
+0xc002e18c: close (...../userprog/syscall.c:471)
+0xc002dd41: open (...../userprog/syscall.c:346)
+0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
+0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
+0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+In tests/userprog/no-vm/multi-oom:
+0x0804acbc: open (...../lib/user/syscall.c:105)
+0x0804810d: consume_some_resources (...prog/no-vm/multi-oom.c:59)
+0x08048132: consume_some_resources_and_die (...prog/no-vm/multi-oom.c:69)
+0x0804824e: main (...rog/no-vm/multi-oom.c:118)
+0x08048a0b: _start (.../../../lib/user/entry.c:9)
+Translations of user virtual addresses above are based on a guess at
+the binary to use.  If this guess is incorrect, then those
+translations will be misleading.
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-create -a lg-create -- -q  -f run lg-create < /dev/null 2> tests/filesys/base/lg-create.errors > tests/filesys/base/lg-create.output
 perl -I../.. ../../tests/filesys/base/lg-create.ck tests/filesys/base/lg-create tests/filesys/base/lg-create.result
-FAIL tests/filesys/base/lg-create
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44 0x804a1ab
-Translation of call stack:
-In kernel.o:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/filesys/base/lg-create:
-0x0804a1ab: open (...../lib/user/syscall.c:105)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+pass tests/filesys/base/lg-create
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-full -a lg-full -- -q  -f run lg-full < /dev/null 2> tests/filesys/base/lg-full.errors > tests/filesys/base/lg-full.output
 perl -I../.. ../../tests/filesys/base/lg-full.ck tests/filesys/base/lg-full tests/filesys/base/lg-full.result
-FAIL tests/filesys/base/lg-full
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44
-Translation of call stack:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+pass tests/filesys/base/lg-full
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-random -a lg-random -- -q  -f run lg-random < /dev/null 2> tests/filesys/base/lg-random.errors > tests/filesys/base/lg-random.output
 perl -I../.. ../../tests/filesys/base/lg-random.ck tests/filesys/base/lg-random tests/filesys/base/lg-random.result
-FAIL tests/filesys/base/lg-random
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44 0x804a337
-Translation of call stack:
-In kernel.o:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/filesys/base/lg-random:
-0x0804a337: open (...../lib/user/syscall.c:105)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+pass tests/filesys/base/lg-random
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-seq-block -a lg-seq-block -- -q  -f run lg-seq-block < /dev/null 2> tests/filesys/base/lg-seq-block.errors > tests/filesys/base/lg-seq-block.output
 perl -I../.. ../../tests/filesys/base/lg-seq-block.ck tests/filesys/base/lg-seq-block tests/filesys/base/lg-seq-block.result
-FAIL tests/filesys/base/lg-seq-block
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xc002bd9b 0xc002b9be 0xc0021c1a 0xc0021e44
-Translation of call stack:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc002bd9b: open (...../userprog/syscall.c:309)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+pass tests/filesys/base/lg-seq-block
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-seq-random -a lg-seq-random -- -q  -f run lg-seq-random < /dev/null 2> tests/filesys/base/lg-seq-random.errors > tests/filesys/base/lg-seq-random.output
 perl -I../.. ../../tests/filesys/base/lg-seq-random.ck tests/filesys/base/lg-seq-random tests/filesys/base/lg-seq-random.result
-FAIL tests/filesys/base/lg-seq-random
-Kernel panic in run: PANIC at ../../threads/thread.c:265 in thread_current(): assertion `is_thread (t)' failed.
-Call stack: 0xc0028324 0xc0020ecd 0xc0020b9a 0xc0023dda 0xc0021c1a 0xc0021e44 0xc00215cf 0xc002b56e 0xc0021c1a 0xc0021e44 0xffffffff 0xc002b9be 0xc0021c1a 0xc0021e44
-Translation of call stack:
-0xc0028324: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0020ecd: thread_current (..../../threads/thread.c:266)
-0xc0020b9a: thread_tick (..../../threads/thread.c:125)
-0xc0023dda: timer_interrupt (...../../devices/timer.c:175)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xc00215cf: intr_enable (..../threads/interrupt.c:100)
-0xc002b56e: page_fault (.../userprog/exception.c:145)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0xffffffff: (unknown)
-0xc002b9be: syscall_handler (...../userprog/syscall.c:206)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
+pass tests/filesys/base/lg-seq-random
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/sm-create -a sm-create -- -q  -f run sm-create < /dev/null 2> tests/filesys/base/sm-create.errors > tests/filesys/base/sm-create.output
 perl -I../.. ../../tests/filesys/base/sm-create.ck tests/filesys/base/sm-create tests/filesys/base/sm-create.result
-FAIL tests/filesys/base/sm-create
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/filesys/base/sm-create
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/sm-full -a sm-full -- -q  -f run sm-full < /dev/null 2> tests/filesys/base/sm-full.errors > tests/filesys/base/sm-full.output
 perl -I../.. ../../tests/filesys/base/sm-full.ck tests/filesys/base/sm-full tests/filesys/base/sm-full.result
-FAIL tests/filesys/base/sm-full
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/filesys/base/sm-full
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/sm-random -a sm-random -- -q  -f run sm-random < /dev/null 2> tests/filesys/base/sm-random.errors > tests/filesys/base/sm-random.output
 perl -I../.. ../../tests/filesys/base/sm-random.ck tests/filesys/base/sm-random tests/filesys/base/sm-random.result
-FAIL tests/filesys/base/sm-random
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/filesys/base/sm-random
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/sm-seq-block -a sm-seq-block -- -q  -f run sm-seq-block < /dev/null 2> tests/filesys/base/sm-seq-block.errors > tests/filesys/base/sm-seq-block.output
 perl -I../.. ../../tests/filesys/base/sm-seq-block.ck tests/filesys/base/sm-seq-block tests/filesys/base/sm-seq-block.result
-FAIL tests/filesys/base/sm-seq-block
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/filesys/base/sm-seq-block
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/sm-seq-random -a sm-seq-random -- -q  -f run sm-seq-random < /dev/null 2> tests/filesys/base/sm-seq-random.errors > tests/filesys/base/sm-seq-random.output
 perl -I../.. ../../tests/filesys/base/sm-seq-random.ck tests/filesys/base/sm-seq-random tests/filesys/base/sm-seq-random.result
-FAIL tests/filesys/base/sm-seq-random
-run: TIMEOUT after 60 seconds of host CPU time
+pass tests/filesys/base/sm-seq-random
 pintos -v -k -T 300 --qemu  --filesys-size=2 -p tests/filesys/base/syn-read -a syn-read -p tests/filesys/base/child-syn-read -a child-syn-read -- -q  -f run syn-read < /dev/null 2> tests/filesys/base/syn-read.errors > tests/filesys/base/syn-read.output
 perl -I../.. ../../tests/filesys/base/syn-read.ck tests/filesys/base/syn-read tests/filesys/base/syn-read.result
-FAIL tests/filesys/base/syn-read
-run: TIMEOUT after 300 seconds of host CPU time
+pass tests/filesys/base/syn-read
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/syn-remove -a syn-remove -- -q  -f run syn-remove < /dev/null 2> tests/filesys/base/syn-remove.errors > tests/filesys/base/syn-remove.output
 perl -I../.. ../../tests/filesys/base/syn-remove.ck tests/filesys/base/syn-remove tests/filesys/base/syn-remove.result
 FAIL tests/filesys/base/syn-remove
-run: TIMEOUT after 60 seconds of host CPU time
+run: write "deleteme": FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/syn-write -a syn-write -p tests/filesys/base/child-syn-wrt -a child-syn-wrt -- -q  -f run syn-write < /dev/null 2> tests/filesys/base/syn-write.errors > tests/filesys/base/syn-write.output
 perl -I../.. ../../tests/filesys/base/syn-write.ck tests/filesys/base/syn-write tests/filesys/base/syn-write.result
-FAIL tests/filesys/base/syn-write
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (syn-write) begin
-  (syn-write) create "stuff"
-  (syn-write) exec child 1 of 10: "child-syn-wrt 0"
-  (syn-write) exec child 2 of 10: "child-syn-wrt 1"
-  (syn-write) exec child 3 of 10: "child-syn-wrt 2"
-  (syn-write) exec child 4 of 10: "child-syn-wrt 3"
-  (syn-write) exec child 5 of 10: "child-syn-wrt 4"
-  (syn-write) exec child 6 of 10: "child-syn-wrt 5"
-  (syn-write) exec child 7 of 10: "child-syn-wrt 6"
-  (syn-write) exec child 8 of 10: "child-syn-wrt 7"
-  (syn-write) exec child 9 of 10: "child-syn-wrt 8"
-  (syn-write) exec child 10 of 10: "child-syn-wrt 9"
-  (syn-write) wait for child 1 of 10 returned 0 (expected 0)
-  (syn-write) wait for child 2 of 10 returned 1 (expected 1)
-  (syn-write) wait for child 3 of 10 returned 2 (expected 2)
-  (syn-write) wait for child 4 of 10 returned 3 (expected 3)
-  (syn-write) wait for child 5 of 10 returned 4 (expected 4)
-  (syn-write) wait for child 6 of 10 returned 5 (expected 5)
-  (syn-write) wait for child 7 of 10 returned 6 (expected 6)
-  (syn-write) wait for child 8 of 10 returned 7 (expected 7)
-  (syn-write) wait for child 9 of 10 returned 8 (expected 8)
-  (syn-write) wait for child 10 of 10 returned 9 (expected 9)
-  (syn-write) open "stuff"
-  (syn-write) read "stuff"
-  (syn-write) end
-Differences in `diff -u' format:
-  (syn-write) begin
-  (syn-write) create "stuff"
-  (syn-write) exec child 1 of 10: "child-syn-wrt 0"
-- (syn-write) exec child 2 of 10: "child-syn-wrt 1"
-- (syn-write) exec child 3 of 10: "child-syn-wrt 2"
-- (syn-write) exec child 4 of 10: "child-syn-wrt 3"
-- (syn-write) exec child 5 of 10: "child-syn-wrt 4"
-- (syn-write) exec child 6 of 10: "child-syn-wrt 5"
-- (syn-write) exec child 7 of 10: "child-syn-wrt 6"
-- (syn-write) exec child 8 of 10: "child-syn-wrt 7"
-- (syn-write) exec child 9 of 10: "child-syn-wrt 8"
-- (syn-write) exec child 10 of 10: "child-syn-wrt 9"
-- (syn-write) wait for child 1 of 10 returned 0 (expected 0)
-- (syn-write) wait for child 2 of 10 returned 1 (expected 1)
-- (syn-write) wait for child 3 of 10 returned 2 (expected 2)
-- (syn-write) wait for child 4 of 10 returned 3 (expected 3)
-- (syn-write) wait for child 5 of 10 returned 4 (expected 4)
-- (syn-write) wait for child 6 of 10 returned 5 (expected 5)
-- (syn-write) wait for child 7 of 10 returned 6 (expected 6)
-- (syn-write) wait for child 8 of 10 returned 7 (expected 7)
-- (syn-write) wait for child 9 of 10 returned 8 (expected 8)
-- (syn-write) wait for child 10 of 10 returned 9 (expected 9)
-- (syn-write) open "stuff"
-- (syn-write) read "stuff"
-- (syn-write) end
-
-(Process exit codes are excluded for matching purposes.)
+pass tests/filesys/base/syn-write
 pass tests/userprog/args-none
 pass tests/userprog/args-single
 pass tests/userprog/args-multiple
@@ -716,45 +376,45 @@ pass tests/userprog/halt
 pass tests/userprog/exit
 pass tests/userprog/create-normal
 pass tests/userprog/create-empty
-FAIL tests/userprog/create-null
-FAIL tests/userprog/create-bad-ptr
+pass tests/userprog/create-null
+pass tests/userprog/create-bad-ptr
 pass tests/userprog/create-long
 pass tests/userprog/create-exists
 pass tests/userprog/create-bound
-FAIL tests/userprog/open-normal
+pass tests/userprog/open-normal
 pass tests/userprog/open-missing
-FAIL tests/userprog/open-boundary
+pass tests/userprog/open-boundary
 pass tests/userprog/open-empty
-FAIL tests/userprog/open-null
-FAIL tests/userprog/open-bad-ptr
+pass tests/userprog/open-null
+pass tests/userprog/open-bad-ptr
 FAIL tests/userprog/open-twice
-FAIL tests/userprog/close-normal
-FAIL tests/userprog/close-twice
-FAIL tests/userprog/close-stdin
-FAIL tests/userprog/close-stdout
-FAIL tests/userprog/close-bad-fd
-FAIL tests/userprog/read-normal
-FAIL tests/userprog/read-bad-ptr
-FAIL tests/userprog/read-boundary
-FAIL tests/userprog/read-zero
+pass tests/userprog/close-normal
+pass tests/userprog/close-twice
+pass tests/userprog/close-stdin
+pass tests/userprog/close-stdout
+pass tests/userprog/close-bad-fd
+pass tests/userprog/read-normal
+pass tests/userprog/read-bad-ptr
+pass tests/userprog/read-boundary
+pass tests/userprog/read-zero
 pass tests/userprog/read-stdout
 pass tests/userprog/read-bad-fd
-FAIL tests/userprog/write-normal
-FAIL tests/userprog/write-bad-ptr
-FAIL tests/userprog/write-boundary
-FAIL tests/userprog/write-zero
+pass tests/userprog/write-normal
+pass tests/userprog/write-bad-ptr
+pass tests/userprog/write-boundary
+pass tests/userprog/write-zero
 pass tests/userprog/write-stdin
 pass tests/userprog/write-bad-fd
 pass tests/userprog/exec-once
 pass tests/userprog/exec-arg
 pass tests/userprog/exec-multiple
 FAIL tests/userprog/exec-missing
-FAIL tests/userprog/exec-bad-ptr
+pass tests/userprog/exec-bad-ptr
 pass tests/userprog/wait-simple
 FAIL tests/userprog/wait-twice
 pass tests/userprog/wait-killed
 FAIL tests/userprog/wait-bad-pid
-FAIL tests/userprog/multi-recurse
+pass tests/userprog/multi-recurse
 FAIL tests/userprog/multi-child-fd
 FAIL tests/userprog/rox-simple
 FAIL tests/userprog/rox-child
@@ -766,20 +426,20 @@ pass tests/userprog/bad-write2
 pass tests/userprog/bad-jump
 pass tests/userprog/bad-jump2
 FAIL tests/userprog/no-vm/multi-oom
-FAIL tests/filesys/base/lg-create
-FAIL tests/filesys/base/lg-full
-FAIL tests/filesys/base/lg-random
-FAIL tests/filesys/base/lg-seq-block
-FAIL tests/filesys/base/lg-seq-random
-FAIL tests/filesys/base/sm-create
-FAIL tests/filesys/base/sm-full
-FAIL tests/filesys/base/sm-random
-FAIL tests/filesys/base/sm-seq-block
-FAIL tests/filesys/base/sm-seq-random
-FAIL tests/filesys/base/syn-read
+pass tests/filesys/base/lg-create
+pass tests/filesys/base/lg-full
+pass tests/filesys/base/lg-random
+pass tests/filesys/base/lg-seq-block
+pass tests/filesys/base/lg-seq-random
+pass tests/filesys/base/sm-create
+pass tests/filesys/base/sm-full
+pass tests/filesys/base/sm-random
+pass tests/filesys/base/sm-seq-block
+pass tests/filesys/base/sm-seq-random
+pass tests/filesys/base/syn-read
 FAIL tests/filesys/base/syn-remove
-FAIL tests/filesys/base/syn-write
-43 of 76 tests failed.
+pass tests/filesys/base/syn-write
+10 of 76 tests failed.
 ../../tests/Make.tests:26: recipe for target 'check' failed
 make: *** [check] Error 1
 
