@@ -77,6 +77,7 @@ child *child_new(const char *prog) {
     ++(c->argc);
   }
 
+
   return c;
 }
 
@@ -158,18 +159,21 @@ process_execute (const char *prog)
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  childProcess = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
+  childProcess = child_new(prog); 
   if (childProcess == NULL)
     return TID_ERROR;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
+  tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); 
   
-  /* not successful */
+  /* thread create not successful */
   if (tid == TID_ERROR){
     child_delete(childProcess);
     return -1;
-  } else {
+  } 
+  
+  /* successfully created a thread*/
+  else {
     childProcess->tid = tid;
     hash_insert(hash_children, &childProcess->hash_elem);
     sema_down(childProcess->sema); /*wait for child process to complete*/
@@ -241,7 +245,7 @@ process_wait (tid_t child_tid)
     ret = c->exit_status;
   } else {
     ret = -1;
-  }	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
+  }	
 
   printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
 
@@ -275,7 +279,7 @@ process_exit (int32_t exit_status)
 
   /*unblock calling process*/
   child *c = hash_children_getChild(thread_tid());
-  c->exit_status = exit_status;
+  c->exit_status = -1;
   sema_up(c->sema);
 }
 

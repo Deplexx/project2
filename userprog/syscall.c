@@ -142,28 +142,8 @@ static void get_syscall_arg(int* esp, int num){
   }
 }
 
-/*@Irene: use f->esp to access stack pointr and then you'll be able to access syscall number, and other argument there. 
-	So do as follow:
-
-	1) sp = f->esp
-
-		|				|
-		|				|
-		|				|
-		|				|
-		|---------------|
-sp --->	|syscall number |
-		|---------------|
-		|     arg 1		|
-		|---------------|
-		|     arg 3		|
-		|---------------|
-		|     arg 2		|
-		'---------------'
-
-	2) f->eax = sysTab[syscall number](arg1, arg2, arg3,......);
-
-	Note: systab (i.e. syscall table) is our data structure for storing, and I think you defined it as file_def
+/*
+	f->eax = sysTab[syscall number](arg1, arg2, arg3,...);
 
 */
 static void
@@ -237,6 +217,8 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE:             
       get_syscall_arg((int*)f->esp,1);
       close(syscall_param[0]);
+      break;
+    default:
       break;
    }
 }

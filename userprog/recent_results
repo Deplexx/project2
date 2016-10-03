@@ -1,4 +1,3 @@
-irenezhang@ubuntu:~/Documents/OS/project2/userprog/build$ make check
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/args-none -a args-none -- -q  -f run args-none < /dev/null 2> tests/userprog/args-none.errors > tests/userprog/args-none.output
 perl -I../.. ../../tests/userprog/args-none.ck tests/userprog/args-none tests/userprog/args-none.result
 pass tests/userprog/args-none
@@ -73,26 +72,7 @@ perl -I../.. ../../tests/userprog/open-bad-ptr.ck tests/userprog/open-bad-ptr te
 pass tests/userprog/open-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/open-twice -a open-twice -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run open-twice < /dev/null 2> tests/userprog/open-twice.errors > tests/userprog/open-twice.output
 perl -I../.. ../../tests/userprog/open-twice.ck tests/userprog/open-twice tests/userprog/open-twice.result
-FAIL tests/userprog/open-twice
-Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
-Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804a609 0x80480ba 0x8048186 0x80487c6
-Translation of call stack:
-In kernel.o:
-0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0022d75: lock_acquire (...../../threads/synch.c:199)
-0xc002e18c: close (...../userprog/syscall.c:471)
-0xc002dd41: open (...../userprog/syscall.c:346)
-0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/userprog/open-twice:
-0x0804a609: open (...../lib/user/syscall.c:105)
-0x080480ba: test_main (.../userprog/open-twice.c:13)
-0x08048186: main (...ild/../../tests/main.c:13)
-0x080487c6: _start (.../../../lib/user/entry.c:9)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+pass tests/userprog/open-twice
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/close-normal -a close-normal -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run close-normal < /dev/null 2> tests/userprog/close-normal.errors > tests/userprog/close-normal.output
 perl -I../.. ../../tests/userprog/close-normal.ck tests/userprog/close-normal tests/userprog/close-normal.result
 pass tests/userprog/close-normal
@@ -117,6 +97,9 @@ pass tests/userprog/read-bad-ptr
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-boundary -a read-boundary -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-boundary < /dev/null 2> tests/userprog/read-boundary.errors > tests/userprog/read-boundary.output
 perl -I../.. ../../tests/userprog/read-boundary.ck tests/userprog/read-boundary tests/userprog/read-boundary.result
 pass tests/userprog/read-boundary
+pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-zero -a read-zero -p ../../tests/userprog/sample.txt -a sample.txt -- -q  -f run read-zero < /dev/null 2> tests/userprog/read-zero.errors > tests/userprog/read-zero.output
+perl -I../.. ../../tests/userprog/read-zero.ck tests/userprog/read-zero tests/userprog/read-zero.result
+pass tests/userprog/read-zero
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/read-stdout -a read-stdout -- -q  -f run read-stdout < /dev/null 2> tests/userprog/read-stdout.errors > tests/userprog/read-stdout.output
 perl -I../.. ../../tests/userprog/read-stdout.ck tests/userprog/read-stdout tests/userprog/read-stdout.result
 pass tests/userprog/read-stdout
@@ -152,64 +135,7 @@ perl -I../.. ../../tests/userprog/exec-multiple.ck tests/userprog/exec-multiple 
 pass tests/userprog/exec-multiple
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/exec-missing -a exec-missing -- -q  -f run exec-missing < /dev/null 2> tests/userprog/exec-missing.errors > tests/userprog/exec-missing.output
 perl -I../.. ../../tests/userprog/exec-missing.ck tests/userprog/exec-missing tests/userprog/exec-missing.result
-FAIL tests/userprog/exec-missing
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (exec-missing) begin
-  load: no-such-file: open failed
-  (exec-missing) exec("no-such-file"): -1
-  no-such-file: exit(-1)
-  (exec-missing) end
-  exec-missing: exit(0)
-Differences in `diff -u' format:
-  (exec-missing) begin
-  load: no-such-file: open failed
-- (exec-missing) exec("no-such-file"): -1
-- no-such-file: exit(-1)
-+ (exec-missing) exec("no-such-file"): 4
-  (exec-missing) end
-  exec-missing: exit(0)
-Acceptable output:
-  (exec-missing) begin
-  load: no-such-file: open failed
-  (exec-missing) exec("no-such-file"): -1
-  (exec-missing) end
-  exec-missing: exit(0)
-Differences in `diff -u' format:
-  (exec-missing) begin
-  load: no-such-file: open failed
-- (exec-missing) exec("no-such-file"): -1
-+ (exec-missing) exec("no-such-file"): 4
-  (exec-missing) end
-  exec-missing: exit(0)
-Acceptable output:
-  (exec-missing) begin
-  (exec-missing) exec("no-such-file"): -1
-  (exec-missing) end
-  exec-missing: exit(0)
-Differences in `diff -u' format:
-  (exec-missing) begin
-- (exec-missing) exec("no-such-file"): -1
-+ load: no-such-file: open failed
-+ (exec-missing) exec("no-such-file"): 4
-  (exec-missing) end
-  exec-missing: exit(0)
-Acceptable output:
-  (exec-missing) begin
-  load: no-such-file: open failed
-  no-such-file: exit(-1)
-  (exec-missing) exec("no-such-file"): -1
-  (exec-missing) end
-  exec-missing: exit(0)
-Differences in `diff -u' format:
-  (exec-missing) begin
-  load: no-such-file: open failed
-- no-such-file: exit(-1)
-- (exec-missing) exec("no-such-file"): -1
-+ (exec-missing) exec("no-such-file"): 4
-  (exec-missing) end
-  exec-missing: exit(0)
+pass tests/userprog/exec-missing
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/exec-bad-ptr -a exec-bad-ptr -- -q  -f run exec-bad-ptr < /dev/null 2> tests/userprog/exec-bad-ptr.errors > tests/userprog/exec-bad-ptr.output
 perl -I../.. ../../tests/userprog/exec-bad-ptr.ck tests/userprog/exec-bad-ptr tests/userprog/exec-bad-ptr.result
 pass tests/userprog/exec-bad-ptr
@@ -233,7 +159,7 @@ pass tests/userprog/multi-recurse
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/multi-child-fd -a multi-child-fd -p ../../tests/userprog/sample.txt -a sample.txt -p tests/userprog/child-close -a child-close -- -q  -f run multi-child-fd < /dev/null 2> tests/userprog/multi-child-fd.errors > tests/userprog/multi-child-fd.output
 perl -I../.. ../../tests/userprog/multi-child-fd.ck tests/userprog/multi-child-fd tests/userprog/multi-child-fd.result
 FAIL tests/userprog/multi-child-fd
-run: read of 239 bytes at offset 0 in "sample.txt" returned 0: FAILED
+run: TIMEOUT after 60 seconds of host CPU time
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-simple -a rox-simple -- -q  -f run rox-simple < /dev/null 2> tests/userprog/rox-simple.errors > tests/userprog/rox-simple.output
 perl -I../.. ../../tests/userprog/rox-simple.ck tests/userprog/rox-simple tests/userprog/rox-simple.result
 FAIL tests/userprog/rox-simple
@@ -241,47 +167,11 @@ run: try to write "rox-simple": FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-child -a rox-child -p tests/userprog/child-rox -a child-rox -- -q  -f run rox-child < /dev/null 2> tests/userprog/rox-child.errors > tests/userprog/rox-child.output
 perl -I../.. ../../tests/userprog/rox-child.ck tests/userprog/rox-child tests/userprog/rox-child.result
 FAIL tests/userprog/rox-child
-Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
-Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804ab62 0x80480db 0x804816d 0x80488b1
-Translation of call stack:
-In kernel.o:
-0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0022d75: lock_acquire (...../../threads/synch.c:199)
-0xc002e18c: close (...../userprog/syscall.c:471)
-0xc002dd41: open (...../userprog/syscall.c:346)
-0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0x0804ab62: (unknown)
-In tests/userprog/rox-child:
-0x080480db: test_main (...userprog/rox-child.inc:17)
-0x0804816d: test_main (...userprog/rox-child.inc:24)
-0x080488b1: swap_byte (...ild/../../lib/random.c:28)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+run: exec "child-rox 1": FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/rox-multichild -a rox-multichild -p tests/userprog/child-rox -a child-rox -- -q  -f run rox-multichild < /dev/null 2> tests/userprog/rox-multichild.errors > tests/userprog/rox-multichild.output
 perl -I../.. ../../tests/userprog/rox-multichild.ck tests/userprog/rox-multichild tests/userprog/rox-multichild.result
 FAIL tests/userprog/rox-multichild
-Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
-Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804ab62 0x80480db 0x804816d 0x80488b1
-Translation of call stack:
-In kernel.o:
-0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0022d75: lock_acquire (...../../threads/synch.c:199)
-0xc002e18c: close (...../userprog/syscall.c:471)
-0xc002dd41: open (...../userprog/syscall.c:346)
-0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-0x0804ab62: (unknown)
-In tests/userprog/rox-multichild:
-0x080480db: test_main (...userprog/rox-child.inc:17)
-0x0804816d: test_main (...userprog/rox-child.inc:24)
-0x080488b1: swap_byte (...ild/../../lib/random.c:28)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+run: exec "child-rox 5": FAILED
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/userprog/bad-read -a bad-read -- -q  -f run bad-read < /dev/null 2> tests/userprog/bad-read.errors > tests/userprog/bad-read.output
 perl -I../.. ../../tests/userprog/bad-read.ck tests/userprog/bad-read tests/userprog/bad-read.result
 pass tests/userprog/bad-read
@@ -303,26 +193,20 @@ pass tests/userprog/bad-jump2
 pintos -v -k -T 360 --qemu  --filesys-size=2 -p tests/userprog/no-vm/multi-oom -a multi-oom -- -q  -f run multi-oom < /dev/null 2> tests/userprog/no-vm/multi-oom.errors > tests/userprog/no-vm/multi-oom.output
 perl -I../.. ../../tests/userprog/no-vm/multi-oom.ck tests/userprog/no-vm/multi-oom tests/userprog/no-vm/multi-oom.result
 FAIL tests/userprog/no-vm/multi-oom
-Kernel panic in run: PANIC at ../../threads/synch.c:197 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
-Call stack: 0xc0029894 0xc0022d75 0xc002e18c 0xc002dd41 0xc002d8a4 0xc0021c1a 0xc0021e44 0x804acbc 0x804810d 0x8048132 0x804824e 0x8048a0b
-Translation of call stack:
-In kernel.o:
-0xc0029894: debug_panic (.../../lib/kernel/debug.c:38)
-0xc0022d75: lock_acquire (...../../threads/synch.c:199)
-0xc002e18c: close (...../userprog/syscall.c:471)
-0xc002dd41: open (...../userprog/syscall.c:346)
-0xc002d8a4: syscall_handler (...../userprog/syscall.c:224)
-0xc0021c1a: intr_handler (..../threads/interrupt.c:367)
-0xc0021e44: intr_entry (threads/intr-stubs.S:38)
-In tests/userprog/no-vm/multi-oom:
-0x0804acbc: open (...../lib/user/syscall.c:105)
-0x0804810d: consume_some_resources (...prog/no-vm/multi-oom.c:59)
-0x08048132: consume_some_resources_and_die (...prog/no-vm/multi-oom.c:69)
-0x0804824e: main (...rog/no-vm/multi-oom.c:118)
-0x08048a0b: _start (.../../../lib/user/entry.c:9)
-Translations of user virtual addresses above are based on a guess at
-the binary to use.  If this guess is incorrect, then those
-translations will be misleading.
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (multi-oom) begin
+  (multi-oom) success. program forked 10 times.
+  (multi-oom) end
+Differences in `diff -u' format:
+  (multi-oom) begin
+- (multi-oom) success. program forked 10 times.
+- (multi-oom) end
+
+(Process exit codes are excluded for matching purposes.)
+
+(User fault messages are excluded for matching purposes.)
 pintos -v -k -T 60 --qemu  --filesys-size=2 -p tests/filesys/base/lg-create -a lg-create -- -q  -f run lg-create < /dev/null 2> tests/filesys/base/lg-create.errors > tests/filesys/base/lg-create.output
 perl -I../.. ../../tests/filesys/base/lg-create.ck tests/filesys/base/lg-create tests/filesys/base/lg-create.result
 pass tests/filesys/base/lg-create
@@ -387,7 +271,7 @@ pass tests/userprog/open-boundary
 pass tests/userprog/open-empty
 pass tests/userprog/open-null
 pass tests/userprog/open-bad-ptr
-FAIL tests/userprog/open-twice
+pass tests/userprog/open-twice
 pass tests/userprog/close-normal
 pass tests/userprog/close-twice
 pass tests/userprog/close-stdin
@@ -408,7 +292,7 @@ pass tests/userprog/write-bad-fd
 pass tests/userprog/exec-once
 pass tests/userprog/exec-arg
 pass tests/userprog/exec-multiple
-FAIL tests/userprog/exec-missing
+pass tests/userprog/exec-missing
 pass tests/userprog/exec-bad-ptr
 pass tests/userprog/wait-simple
 FAIL tests/userprog/wait-twice
@@ -439,7 +323,7 @@ pass tests/filesys/base/sm-seq-random
 pass tests/filesys/base/syn-read
 FAIL tests/filesys/base/syn-remove
 pass tests/filesys/base/syn-write
-10 of 76 tests failed.
+8 of 76 tests failed.
 ../../tests/Make.tests:26: recipe for target 'check' failed
 make: *** [check] Error 1
 
