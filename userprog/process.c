@@ -267,6 +267,7 @@ process_exit (int32_t exit_status)
   uint32_t *pd;
 
   /* now I'm gonna close my exe file :) */
+  struct file *file = cur->executable;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -290,7 +291,7 @@ process_exit (int32_t exit_status)
   c->exit_status = exit_status;
 
   sema_up(c->sema);
-  /*file_close(executable);*/
+  file_close(file);
 
 }
 
@@ -407,12 +408,9 @@ load (const child *childProcess, void (**eip) (void), void **esp)
     }
 
 
-    /*
-    executable = file;
+    t->executable = file;
     file_deny_write(file);
-    */
-
-
+  
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -497,7 +495,7 @@ load (const child *childProcess, void (**eip) (void), void **esp)
  done:
   /* Let's not close the execuatble here
      and instead close it when we're about to exit?! */
-  file_close (file);
+  /*file_close (file);*/
   return success;
 }
 

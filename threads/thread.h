@@ -6,8 +6,7 @@
 #include <stdint.h>
 
 
-/* this field will save a ptr to my exe file so I can close it when I'm done :)*
-struct file *executable;*/
+
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -94,6 +93,10 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+
+    /* this field will save a ptr to my exe file so I can close it when I'm done :)*/
+    struct file *executable;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -104,6 +107,7 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
   };
 
 /* If false (default), use round-robin scheduler.
