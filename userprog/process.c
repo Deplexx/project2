@@ -33,6 +33,7 @@ typedef struct struct_child {
   char **argv;
   tid_t tid;
   bool success_load;
+  bool waiting;
   int32_t exit_status;
 } child;
 
@@ -57,6 +58,8 @@ child *child_new(const char *prog) {
   sema_init(c->sema, 0);			
 
   c->tid = TID_ERROR;
+
+  c->success_load = c->waiting = false;
 
   c->exit_status = 0; /*default success for exit status*/
 
@@ -128,13 +131,15 @@ static child *hash_children_getChild (const tid_t tid) {
 
   p.tid = tid;
   e = hash_find (hash_children, &p.hash_elem);
-  return e != NULL ? hash_entry (e, child, hash_elem) : NULL;
+  return e? hash_entry (e, child, hash_elem): NULL;
 }
 
 static void hash_children_deleteChild(const tid_t tid) {
   child *c = hash_children_getChild(tid);
-  hash_delete (hash_children, &c->hash_elem);
-  child_delete(c);
+  if(c) {
+    hash_delete (hash_children, &c->hash_elem);
+    child_delete(c);
+  }
 }
 
 static thread_func start_process NO_RETURN;
@@ -237,13 +242,18 @@ process_wait (tid_t child_tid)
   int ret;
   child *c;
   if((c = hash_children_getChild(child_tid))) {
-    sema_down(c->sema);
-    ret = c->exit_status;
+    if(c->waiting) { /*catch calling wait twice*/
+      ret = -1;
+    } else {
+      c->waiting = true;
+      sema_down(c->sema);
+      c->waiting = false;
+      ret = c->exit_status;
+      printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
+    }
   } else {
     ret = -1;
-  }	/* @Nico: this needs to get modified so that it waits properly and syncs with child*/
-
-  printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
+  }
 
   hash_children_deleteChild(child_tid);
   return ret; /*return this if child_tid was valid*/
