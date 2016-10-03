@@ -5,6 +5,10 @@
 #include <list.h>
 #include <stdint.h>
 
+
+/* this field will save a ptr to my exe file so I can close it when I'm done :)*
+struct file *executable;*/
+
 /* States in a thread's life cycle. */
 enum thread_status
   {

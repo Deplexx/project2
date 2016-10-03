@@ -260,22 +260,24 @@ bool create(const char* file, unsigned initial_size){
 }
 
 bool remove(const char* file){
-  lock_acquire(&lock_filesys);
+  /*lock_acquire(&lock_filesys);
   bool retval = filesys_remove(file);
   unsigned cur_hash_num = hash_string(file);
 
-  /*remove all associated file_def in list*/
-  for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
+  remove all associated file_def in list*/
+  /*for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
     struct file_def* fp = list_entry(e,struct file_def, elem);
     if (cur_hash_num == fp->hash_num){
       if (strcmp(file,fp->file_str)==0){
-	list_remove(&(fp->elem));	
+	      list_remove(&(fp->elem));	
       }
     }
   }
 
   lock_release(&lock_filesys);
-  return retval;  
+  return retval;  */
+
+  return filesys_remove(file);
 }
 
 int open(const char* file){
