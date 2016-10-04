@@ -232,14 +232,7 @@ void exit(int status) {
 int exec(const char* cmd_line){
   tid_t tid;
   check_user_ptr(cmd_line);
-  if(!filesys_create(cmd_line, 0)) {
-    tid = process_execute(cmd_line);
-    return tid;
-  } else {
-    filesys_remove(cmd_line);
-    tid = TID_ERROR;
-  }
-
+  tid = process_execute(cmd_line);
   return tid;
 }
 

@@ -158,26 +158,35 @@ void process_init(void) {
 tid_t
 process_execute (const char *prog) 
 {
-  child *childProcess;
+  child *cp;
   tid_t tid;
   
+  if(!prog) {
+    return TID_ERROR;
+  }
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  childProcess = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
-  if (childProcess == NULL)
+  cp = child_new(prog); /* @Niko: this is ours we can make it to point to the child structure*/
+  if (!cp)
     return TID_ERROR;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (childProcess->prog, PRI_DEFAULT, start_process, childProcess); /*this may need to change...*/
+  tid = thread_create (cp->prog, PRI_DEFAULT, start_process, cp); /*this may need to change...*/
   
   /* not successful */
   if (tid == TID_ERROR){
-    child_delete(childProcess);
-    return -1;
+    child_delete(cp);
+    return TID_ERROR;
   } else {
-    childProcess->tid = tid;
-    hash_insert(hash_children, &childProcess->hash_elem);
-    sema_down(childProcess->sema); /*wait for child process to complete*/
+      cp->tid = tid;
+      hash_insert(hash_children, &cp->hash_elem);
+
+      sema_down(cp->sema); /*wait for child process to complete loading*/
+      if(!(cp->success_load)) {
+	hash_children_deleteChild(cp->tid);
+	return TID_ERROR;
+      }
   }
 
   return tid;
