@@ -466,10 +466,7 @@ void close(int fd){
     /*free memory*/
     free(fp->file_str);
     free(fp);
+  } 
 
-    lock_release(&lock_filesys);
-  } else {
-    lock_release(&lock_filesys);
-    exit(-1); /*another thread trying to close an opened file*/
-  }
+  lock_release(&lock_filesys);
 }

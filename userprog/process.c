@@ -259,12 +259,12 @@ process_wait (tid_t child_tid)
       c->waiting = false;
       ret = c->exit_status;
       printf ("%s: exit(%d)\n", c->fname, ret); /*exit feedback*/
+      hash_children_deleteChild(child_tid);
     }
   } else {
     ret = -1;
   }
 
-  hash_children_deleteChild(child_tid);
   return ret; /*return this if child_tid was valid*/
 }
 
