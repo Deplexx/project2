@@ -36,6 +36,7 @@ struct file_def{ /*contains all info of a currently opened file*/
   char* file_str;
   struct file* opened_file;
   int fd;
+  tid_t tid;
 };
 
 struct list open_file_list;/*contains all currently opend files*/
@@ -149,8 +150,6 @@ static void get_syscall_arg(int* esp, int num){
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  struct thread* cur_thread = thread_current();
-
   int syscall_num;
   if(is_user_vaddr(f->esp)) {
     if((syscall_num = get_user_int(f->esp)) == -1) {
@@ -161,10 +160,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
 
   if ((syscall_num > SYS_INUMBER) || (syscall_num < SYS_HALT)){
-    cur_thread->status = -1;
-    thread_exit(-1);
+    exit(-1);
   }
-
 
   switch(syscall_num) {
     case SYS_HALT:                   
@@ -228,13 +225,14 @@ void halt(void){
 }
 
 void exit(int status) {
-  thread_exit(status);
+  thread_current()->exit_status = status;
+  thread_exit();
 }
 
 int exec(const char* cmd_line){
   tid_t tid;
   check_user_ptr(cmd_line);
-  if(!filesys_create(cmd_line, 1)) {
+  if(!filesys_create(cmd_line, 0)) {
     tid = process_execute(cmd_line);
     return tid;
   } else {
@@ -306,6 +304,8 @@ int open(const char* file){
   }
   cur_file->hash_num = cur_hash_num; 
   cur_file->file_str = (char*) malloc(15);
+
+  cur_file->tid = thread_current()->tid;
 
   if (cur_file->file_str == NULL){
     free(cur_file);
@@ -463,14 +463,20 @@ void close(int fd){
     return;
   }
 
-  /*close file*/
-  file_close(fp->opened_file);
+  if(fp->tid == thread_current()->tid) {
+    /*close file*/
+    file_close(fp->opened_file);
 
-  /*remove from list*/
-  list_remove(&(fp->elem));
+    /*remove from list*/
+    list_remove(&(fp->elem));
 
-  /*free memory*/
-  free(fp->file_str);
-  free(fp);
-  lock_release(&lock_filesys);
+    /*free memory*/
+    free(fp->file_str);
+    free(fp);
+
+    lock_release(&lock_filesys);
+  } else {
+    lock_release(&lock_filesys);
+    exit(-1); /*another thread trying to close an opened file*/
+  }
 }

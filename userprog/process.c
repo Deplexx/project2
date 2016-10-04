@@ -211,7 +211,7 @@ start_process (void *cp) /*@Nico: void *file_name_ need to be changed to a child
 
   /* If load failed, quit. */
   if (!success) 
-    thread_exit (-1);
+    thread_exit ();
 	
 	/* @Nico: before asm, make sure you sema_up or release the parent process using the argumet passed to this function */
   sema_up(childProcess->sema); /*wait for program to be loaded first*/
@@ -261,7 +261,7 @@ process_wait (tid_t child_tid)
 
 /* Free the current process's resources. */
 void
-process_exit (int32_t exit_status)	
+process_exit ()	
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -288,7 +288,7 @@ process_exit (int32_t exit_status)
 
   /*unblock calling process*/
   child *c = hash_children_getChild(thread_tid());
-  c->exit_status = exit_status;
+  c->exit_status = cur->exit_status;
 
   sema_up(c->sema);
   file_close(file);

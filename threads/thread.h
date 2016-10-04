@@ -93,6 +93,7 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    int32_t exit_status; /*set whenever "exit" is called on the thread*/
 
     /* this field will save a ptr to my exe file so I can close it when I'm done :)*/
     struct file *executable;
@@ -131,7 +132,7 @@ struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
 
-void thread_exit (int32_t exit_status) NO_RETURN;
+void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
