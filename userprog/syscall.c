@@ -226,6 +226,16 @@ void halt(void){
 
 void exit(int status) {
   thread_current()->exit_status = status;
+
+  /*close same file in linklist, call close function*/
+  for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
+    struct file_def* fp = list_entry(e,struct file_def, elem);
+    if(thread_tid() == fp->tid) {
+      close(fp->fd);
+      break;
+    }
+  }
+
   thread_exit();
 }
 

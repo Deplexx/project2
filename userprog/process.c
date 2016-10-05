@@ -150,6 +150,10 @@ void process_init(void) {
   hash_init(hash_children, hash_child_hash, hash_child_less, NULL);
 }
 
+void process_done(void) {
+  hash_destroy(hash_children, &hash_child_delete);
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
