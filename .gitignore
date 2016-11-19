@@ -43,4 +43,5 @@ tags
 # Personal config files
 utils/
 threads/
-.idea/
+.idea/*
+CMakeLists.txt
