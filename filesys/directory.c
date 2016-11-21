@@ -6,9 +6,12 @@
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 
+
+//TODO Parsing dir path should be performed piece by piece
 /* A directory. */
 struct dir 
   {
+    //TODO add ./ and ../
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
   };

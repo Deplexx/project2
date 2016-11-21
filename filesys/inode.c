@@ -10,6 +10,8 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+
+//TODO use hash defines
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -17,6 +19,9 @@ struct inode_disk
     block_sector_t start;               /* First data sector. */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
+
+	//TODO update UNUSED to (1) array of 120 direct ptrs (2) array of 5 signle indirect ptrs (3) one double indirect ptr
+	//TODO add inod_type
     uint32_t unused[125];               /* Not used. */
   };
 
@@ -37,6 +42,8 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
+
+	//TODO add more metadata: lock_grow and file* file
   };
 
 /* Returns the block device sector that contains byte offset POS
@@ -200,6 +207,8 @@ inode_remove (struct inode *inode)
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) 
 {
+
+ //TODO modify this to follow new inode logic
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
@@ -258,7 +267,9 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset) 
 {
-  const uint8_t *buffer = buffer_;
+ //TODO rewrite to accomodate new multi-level indexing scheme
+
+ const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 

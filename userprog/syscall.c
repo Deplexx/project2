@@ -163,6 +163,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     exit(-1);
   }
 
+ //TODO add 4 more cases for subdirect
   switch(syscall_num) {
     case SYS_HALT:                   
       halt();
