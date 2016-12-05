@@ -26,6 +26,16 @@ bool create(const char* file, unsigned initial_size);
 
 bool remove(const char* file);
 
+int inumber(int fd);
+
+bool isdir(int fd);
+
+bool readdir(int fd, char* path);
+
+bool chdir(char* path);
+
+bool mkdir(char* path);
+
 struct list_elem* e;/*used for iterator*/
 
 /* Reads a byte at user virtual address UADDR.
@@ -199,6 +209,26 @@ syscall_handler (struct intr_frame *f UNUSED)
       get_syscall_arg((int*)f->esp,1);
       close(syscall_param[0]);
       break;
+    case SYS_CHDIR:
+      get_syscall_arg((int*)f->esp,1);
+      f->eax = (unsigned)chdir(syscall_param[0]);
+      break;
+    case SYS_MKDIR:
+      get_syscall_arg((int*)f->esp,1);
+      f->eax = (unsigned)mkdir(syscall_param[0]);
+      break;
+    case SYS_READDIR:
+      get_syscall_arg((int*)f->esp,2);
+      f->eax = (unsigned)readdir(syscall_param[0], syscall_param[1]);
+      break;
+    case SYS_ISDIR:
+      get_syscall_arg((int*)f->esp,1);
+      f->eax = (unsigned)isdir(syscall_param[0]);
+      break;
+    case SYS_INUMBER:
+      get_syscall_arg((int*)f->esp,1);
+      f->eax = (unsigned)inumber(syscall_param[0]);
+      break;
     default:
       break;
    }
@@ -240,7 +270,7 @@ bool create(const char* file, unsigned initial_size){
   if(file == NULL) { exit(-1);}
   lock_acquire(&lock_filesys);	/*declares ownership of filesys*/
   check_user_ptr(file);
-  bool retval = filesys_create(file,initial_size);
+  bool retval = filesys_create(file,initial_size, false);
   lock_release(&lock_filesys);  /*release ownership*/
   return retval;
 }
@@ -464,3 +494,46 @@ void close(int fd){
 
   lock_release(&lock_filesys);
 }
+
+bool mkdir(char* path){
+  if (path == NULL) return false;
+  check_user_ptr(path);
+  bool retval = filesys_create(path,0,true);
+  return retval;
+}
+
+bool chdir(char* path){return true;}
+
+bool readdir(int fd, char* path){
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
+ 
+  if (fp == NULL) return false;
+  struct inode* inode = file_get_inode(fp->opened_file);
+  if (inode == NULL) return false; 
+  if (!inode_isdir(inode)) return false;
+
+  //TODO: read dir 
+}
+
+bool isdir(int fd) {
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
+ 
+  if (fp == NULL) return false;
+  struct inode* inode = file_get_inode(fp->opened_file);
+  if (inode == NULL) return false; 
+  return inode_isdir(inode);
+}
+
+int inumber(int fd) {
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
+ 
+  if (fp == NULL) return -1;
+  struct inode* inode = file_get_inode(fp->opened_file);
+  if (inode == NULL) return -1; 
+  return inode_inumber(inode);
+}
+
+
