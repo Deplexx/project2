@@ -92,7 +92,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+ 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -147,6 +147,19 @@ thread_print_stats (void)
           idle_ticks, kernel_ticks, user_ticks);
 }
 
+
+struct list_elem* e;/*used for iterator*/
+
+  /*return the file_def struct with given fd*/
+struct file_def* find_file_def(struct thread* t, int fd){
+  for(e = list_begin(&(t->open_file_list));e != list_end(&(t->open_file_list));e = list_next(e))  {
+    struct file_def* fp = list_entry(e,struct file_def, elem);
+      if (fd == fp->fd){
+        return fp; 
+    }
+  }
+  return NULL;
+}
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
@@ -182,7 +195,9 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  list_init (&(t->open_file_list));
+  t->fd_counter = 2;
+ 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

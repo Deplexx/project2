@@ -20,28 +20,13 @@
 #define max_param 3
 int syscall_param[max_param];
 
-unsigned fd_counter;
-
 struct lock lock_filesys;
-
-struct file_def* find_file_def(int fd);
 
 bool create(const char* file, unsigned initial_size);
 
 bool remove(const char* file);
 
-struct file_def{ /*contains all info of a currently opened file*/
-  struct list_elem elem;
-  unsigned hash_num;
-  char* file_str;
-  struct file* opened_file;
-  int fd;
-  tid_t tid;
-};
-
-struct list open_file_list;/*contains all currently opend files*/
 struct list_elem* e;/*used for iterator*/
-
 
 /* Reads a byte at user virtual address UADDR.
    UADDR must be below PHYS_BASE.
@@ -126,8 +111,6 @@ void
 syscall_init (void) 
 {
   lock_init(&lock_filesys);
-  fd_counter = 2; /*initialze fd and open_file list*/
-  list_init (&open_file_list);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -226,10 +209,11 @@ void halt(void){
 }
 
 void exit(int status) {
-  thread_current()->exit_status = status;
+  struct thread* t = thread_current();
+  t->exit_status = status;
 
   /*close same file in linklist, call close function*/
-  for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
+  for(e = list_begin(&(t->open_file_list));e != list_end(&(t->open_file_list));e = list_next(e))  {
     struct file_def* fp = list_entry(e,struct file_def, elem);
     if(thread_tid() == fp->tid) {
       close(fp->fd);
@@ -299,6 +283,8 @@ int open(const char* file){
     return -1;
   }
 
+  struct thread* t = thread_current();
+
   /*maintain record for newly opened file*/
   struct file_def *cur_file = (struct file_def*)malloc(sizeof(struct file_def));    
   if (cur_file == NULL) {
@@ -323,10 +309,10 @@ int open(const char* file){
   }
 
   cur_file->opened_file = fp;
-  cur_file->fd = fd_counter;
+  cur_file->fd = t->fd_counter;
 
   /*close same file in linklist, call close function*/
-  for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
+  for(e = list_begin(&(t->open_file_list));e != list_end(&(t->open_file_list));e = list_next(e))  {
     struct file_def* fp = list_entry(e,struct file_def, elem);
     if (cur_hash_num == fp->hash_num){
       if (strcmp(file,fp->file_str)==0){
@@ -339,11 +325,11 @@ int open(const char* file){
   }
 
   //add newly opened file to opened file list*/
-  list_push_back(&open_file_list,&(cur_file->elem));
+  list_push_back(&(t->open_file_list),&(cur_file->elem));
 
   /*fd_counter calculation*/
-  ++fd_counter;
-  if ((fd_counter == 0) || (fd_counter == 1)) fd_counter = 2;
+  ++t->fd_counter;
+  if ((t->fd_counter == 0) || (t->fd_counter == 1)) t->fd_counter = 2;
 
 
   lock_release(&lock_filesys);
@@ -351,21 +337,13 @@ int open(const char* file){
 }
 
 
-  /*return the file_def struct with given fd*/
-struct file_def* find_file_def(int fd){
-  for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
-    struct file_def* fp = list_entry(e,struct file_def, elem);
-      if (fd == fp->fd){
-        return fp; 
-    }
-  }
-  return NULL;
-}
+
 
 int filesize(int fd){
   int length;
   lock_acquire(&lock_filesys);
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
   if (fp == NULL){
     lock_release(&lock_filesys);
     return 0;
@@ -390,7 +368,8 @@ int read(int fd, void* buffer,unsigned size){
     lock_release(&lock_filesys);
     return size;
   }
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
     lock_release(&lock_filesys);
     return 0;
@@ -420,7 +399,8 @@ int write(int fd, const void* buffer, unsigned size){
     lock_release(&lock_filesys);
     return size;
   }
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
     lock_release(&lock_filesys);
     return 0;
@@ -433,7 +413,8 @@ int write(int fd, const void* buffer, unsigned size){
 
 void seek(int fd, unsigned position){
   lock_acquire(&lock_filesys);
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
     lock_release(&lock_filesys);
     return;
@@ -445,7 +426,8 @@ void seek(int fd, unsigned position){
 unsigned tell(int fd){
   lock_acquire(&lock_filesys);
   int pos;
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
   if (fp == NULL){
     lock_release(&lock_filesys);
     return 0;
@@ -460,7 +442,8 @@ void close(int fd){
   lock_acquire(&lock_filesys);
   if ((fd==0) || (fd==1)) exit(-1);
 
-  struct file_def* fp = find_file_def(fd);
+  struct thread* t = thread_current();
+  struct file_def* fp = find_file_def(t, fd);
 
   if (fp == NULL){
     lock_release(&lock_filesys);

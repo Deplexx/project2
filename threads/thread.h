@@ -93,6 +93,9 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    unsigned fd_counter;		/* file descriptor counter */
+
+    struct list open_file_list;/*contains all currently opend files*/
     int32_t exit_status; /*set whenever "exit" is called on the thread*/
 
     /* this field will save a ptr to my exe file so I can close it when I'm done :)*/
@@ -111,6 +114,16 @@ struct thread
 
   };
 
+struct file_def{ /*contains all info of a currently opened file*/
+  struct list_elem elem;
+  unsigned hash_num;
+  char* file_str;
+  struct file* opened_file;
+  int fd;
+  tid_t tid;
+};
+
+struct file_def* find_file_def(struct thread* t, int fd);
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
