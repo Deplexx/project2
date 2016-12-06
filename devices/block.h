@@ -1,6 +1,7 @@
 #ifndef DEVICES_BLOCK_H
 #define DEVICES_BLOCK_H
 
+#include <limits.h>
 #include <stddef.h>
 #include <inttypes.h>
 
@@ -9,6 +10,9 @@
    disks.  It's not worth it to try to cater to other sector
    sizes in Pintos (yet). */
 #define BLOCK_SECTOR_SIZE 512
+
+/*A shortcut in case the block device sector is all zeros*/
+#define BLOCK_SECTOR_ALL_ZEROS (UINT_MAX - 1)
 
 /* Index of a block device sector.
    Good enough for devices up to 2 TB. */

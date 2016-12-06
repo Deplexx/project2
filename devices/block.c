@@ -120,8 +120,13 @@ check_sector (struct block *block, block_sector_t sector)
 void
 block_read (struct block *block, block_sector_t sector, void *buffer)
 {
-  check_sector (block, sector);
-  block->ops->read (block->aux, sector, buffer);
+  if(sector == BLOCK_SECTOR_ALL_ZEROS)
+    memset(buffer, 0, BLOCK_SECTOR_SIZE);
+  else {
+    check_sector (block, sector);
+    block->ops->read (block->aux, sector, buffer);
+  }
+
   block->read_cnt++;
 }
 
