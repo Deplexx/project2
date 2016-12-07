@@ -359,32 +359,98 @@ static enum sector_t inode_getIndices(off_t *direct, off_t *singly, off_t *doubl
     return (enum sector_t) NULL;
 }
 
+/* frees up the the block sectores based on type. */
+void
+inode_free_map_release (struct inode *inode) {
+
+	off_t direct, singly, doubly;
+	enum sector_t type = inode_getIndices(&direct, &singly, &doubly, inode->data.length);
+
+
+	switch (type) {
+		case eDIRECT:/** ----------------Direct--------------------------- */
+
+			/** release direct sectors one by one */
+			for (int sctr = 0; sctr <= direct; ++sctr)
+					free_map_release(inode->data.direct[sctr], 1);
+			break;
+
+
+		case eSINGLY:/** ----------------Singly--------------------------- */
+
+			/** release direct sectors one by one */
+			for (int sctr = 0; sctr <= INODE_DIRECT; ++sctr)
+				free_map_release(inode->data.direct[sctr], 1);
+
+			/** release singly sectors one by one */
+			for (int sngly_blk = 0; sngly_blk <= singly; ++sngly_blk) {
+
+
+				//sngly_blk<= 128 .. except for last singly block: sngly_blk<=direct
+				for (int sctr = 0; sctr <= (sngly_blk == singly ? direct : SECTOR_POINTERS_PER_BLOCK); ++j){
+					free_map_release(inode->data.singly[sngly_blk], 1); //TODO 12/07/2016: replace this with?
+				}
+			}
+			break;
+
+
+
+		case eDOUBLY:/** ----------------Doubly--------------------------- */
+
+			/** release direct sectors one by one */
+			for (int sctr = 0; sctr <= INODE_DIRECT; ++sctr)
+				free_map_release(inode->data.direct[sctr], 1);
+
+			/** release singly sectors one by one */
+			for (int sngly_blk = 0; sngly_blk <= INODE_SINGLY_INDIRECT; ++sngly_blk) {
+
+
+				//sngly_blk<= 128 .. except for last singly block: sngly_blk<=direct
+				for (int sctr = 0; sctr <= SECTOR_POINTERS_PER_BLOCK; ++sctr){
+					free_map_release(inode->data.singly[sngly_blk], 1); //TODO 12/07/2016: replace this with?
+				}
+			}
+
+			/** release doubly sectors one by one */
+			for (int dbly_blk = 0; dbly_blk <= doubly; ++dbly_blk) {
+
+
+				//dbly_blk<= 128 .. except for last doubly block: dbly_blk <= sinly
+				for (int sngly_blk = 0; sngly_blk <= (dbly_blk ==  doubly? singly : SECTOR_POINTERS_PER_BLOCK); ++sngly_blk){
+
+					//sngly_blk<= 128 .. except for last singly block: sngly_blk<=direct
+					for (int sctr = 0; sctr <= (sngly_blk == singly ? direct : SECTOR_POINTERS_PER_BLOCK); ++j){
+						free_map_release(inode->data.doubly[dbly_blk], 1); //TODO 12/07/2016: replace this with?
+					}
+				}
+			}
+			break;
+	}
+}
+
 /* Closes INODE and writes it to disk.
    If this was the last reference to INODE, frees its memory.
    If INODE was also a removed inode, frees its blocks. */
 void
 inode_close (struct inode *inode) 
 {
-  /* Ignore null pointer. */
-  if (inode == NULL)
-    return;
+	/* Ignore null pointer. */
+	if (inode == NULL)
+		return;
 
-  /* Release resources if this was the last opener. */
-  if (--inode->open_cnt == 0)
-    {
-      /* Remove from inode list and release lock. */
-      list_remove (&inode->elem);
- 
-      /* Deallocate blocks if removed. */
-      if (inode->removed) 
-        {
-          free_map_release (inode->sector, 1);
-          free_map_release (inode->data.start,
-                            bytes_to_sectors (inode->data.length)); 
-        }
+	/* Release resources if this was the last opener. */
+	if (--inode->open_cnt == 0) {
+		/* Remove from inode list and release lock. */
+		list_remove(&inode->elem);
 
-      free (inode); 
-    }
+		/* Deallocate blocks if removed. */
+		if (inode->removed) {
+			free_map_release(inode->sector, 1);
+			inode_free_map_release(inode);
+		}
+
+		free(inode);
+	}
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
