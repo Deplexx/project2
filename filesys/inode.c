@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -45,6 +46,7 @@ struct inode
     struct inode_disk data;             /* Inode content. */
     bool isdir;
 	//TODO add more metadata: lock_grow and file* file
+    struct lock lock;
   };
 
 /* Returns the block device sector that contains byte offset POS
@@ -59,6 +61,14 @@ byte_to_sector (const struct inode *inode, off_t pos)
     return inode->data.start + pos / BLOCK_SECTOR_SIZE;
   else
     return -1;
+}
+
+void lock_inode(struct inode* inode){
+  lock_acquire(&inode->lock);
+}
+
+void unlock_inode(struct inode* inode){
+  lock_release(&inode->lock);
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -146,6 +156,7 @@ inode_open (block_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
+  lock_init(&inode->lock);
   block_read (fs_device, inode->sector, &inode->data);
   return inode;
 }
