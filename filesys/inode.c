@@ -16,7 +16,7 @@
 
 /*MUST ADD UP TO THE DIFFERENCE BETWEEN (BLOCK_SECTOR_SIZE) AND inode_disk's METADATA*/
 #define INODE_SECTOR_NUMBER_SIZE (sizeof unsigned)
-#define SECTOR_POINTERS_PER_BLOCK (BLOCK_SECTOR_SIZE >> INODE_SECTOR_NUMBER_SIZE)
+#define SECTOR_POINTERS_PER_BLOCK (BLOCK_SECTOR_SIZE / INODE_SECTOR_NUMBER_SIZE)
 
 #define INODE_POINTERS 125
 #define INODE_DIRECT 120
@@ -400,6 +400,7 @@ static bool inode_extend(struct inode *inode, off_t offset) {
   ASSERT(inode != NULL);
 
   bool ret = false;
+  bool abort = false;
 
   size_t newSize = inode->data.length;
 
@@ -408,10 +409,17 @@ static bool inode_extend(struct inode *inode, off_t offset) {
   size_t newBlocks = oldBlocks;
   size_t blocksWritten = 0;
 
-  off_t direct, singly, doubly;
+  off_t writeDirect, writeSingly, writeDoubly;
   enum sector_t type;
 
   static char zeros[BLOCK_SECTOR_SIZE];
+  static char unalloc[BLOCK_SECTOR_SIZE];
+
+  block_sector_t *singly_indirect_buff = inode->data.singly;
+  block_sector_t *direct_buff = inode->data.direct;
+
+  block_sector_t *singly_indirect_buff_tmp;
+  block_sector_t *direct_buff_tmp;
 
   if(offBlocks > oldBlocks)
     do
@@ -420,18 +428,75 @@ static bool inode_extend(struct inode *inode, off_t offset) {
   else
     return true;
 
-  type = inode_getIndices(&direct, &singly, &doubly, offset);
+  ASSERT(singly_indirect_buff_tmp = (block_sector_t*) malloc(BLOCK_SECTOR_SIZE));
+  ASSERT(direct_buff_tmp = (block_sector_t*) malloc(BLOCK_SECTOR_SIZE));
+
+  memset(unalloc, INODE_SECTORS_UNALLOCATED, BLOCK_SECTOR_SIZE);
+
+  type = inode_getIndices(&direct, &singly, &doubly, newBlocks);
+
   if(doubly == NULL)
     doubly = 1;
   if(singly == NULL)
     singly = 1;
 
   off_t i, j, k;
-  for(i = 0; i < doubly; ++i)
-    if(free_map_allocate (1, (block_sector_t*) &inode->data.doubly[i])) {
-      block_write (fs_device, inode->data.doubly[i], zeros);
-      ++blocksWritten;
+  off_t singlyJ = singly;
+  off_t directK = direct;
+  for(i = 0; i < doubly; ++i) {
+    if(type == eDOUBLY) {
+      singly_indirect_buff = singly_indirect_buff_tmp;
+      
+      if(!free_map_allocate (1, (block_sector_t*) &inode->data.doubly[i]))
+	abort = true;
+
+      if(i == doubly - 1)
+	singlyJ = singly;
+      else
+	singlyJ = DOUBLY_SIZE / SINGLY_SIZE;
     }
+
+    if(abort) 
+      break;
+
+    for(j = 0; j < singlyJ; ++j) {
+      if(type == eDOUBLY || type == eSINGLY){
+	direct_buff = direct_buff_tmp;
+        if(!free_map_allocate (1, (block_sector_t*) &singly_indirect_buff[j]))
+	  abort = true;
+      }
+
+      if(abort) 
+        break;
+      
+      if((j == singlyJ - 1) && (i == doubly - 1))
+        directK = direct;
+      else
+	directK = SINGLY_SIZE / DIRECT_SIZE;
+	
+ 
+      for(k = 0; k < directK; ++k) {
+        if(!free_map_allocate (1, (block_sector_t*) &direct_buff[k])) {
+	  abort = true;
+	  break;
+	} else {
+	  block_write(fs_device, direct_buff[k], zeros);
+	  ++newSize;
+	}
+      }
+
+      if(type != eDIRECT) {
+	block_write(fs_device, singly_direct_buff[j], direct_buff);
+	memset(direct_buff, INODE_SECTORS_UNALLOCATED, BLOCK_SECTOR_SIZE);
+      }
+
+      if(abort)
+	break;
+    }
+
+    if(abort)
+      break;
+  }
 
   inode->data.length = newSize;
   return true;
