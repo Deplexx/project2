@@ -276,7 +276,7 @@ inode_free_map_release(struct inode *inode) {
     switch (type) {
         /** ----------------Direct--------------------------- */
         case eDIRECT:
-            free_map_release(inode->data.direct[sctr], direct);
+            free_map_release(inode->data.direct[0], direct);
             break;
 
             /** ----------------Singly--------------------------- */
@@ -288,8 +288,8 @@ inode_free_map_release(struct inode *inode) {
             /** release singly sectors one by one */
             for (int sngly_indx = 0; sngly_indx <= singly; ++sngly_indx) {//TODO <= or < ?
 
-                block_sector_t singly_block = (*block_sector_t) inode->data.singly[sngly_indx];
-                int blk_size = (sngly_indx == singly) ? direct : SECTOR_POINTERS_PER_BLOCK;
+                block_sector_t singly_block = (block_sector_t *) inode->data.singly[sngly_indx];
+                off_t blk_size = (sngly_indx == singly) ? direct : (off_t) SECTOR_POINTERS_PER_BLOCK;
                 free_map_release(singly_block[0], blk_size);
             }
 
@@ -309,15 +309,15 @@ inode_free_map_release(struct inode *inode) {
             /** release doubly sectors one by one */
             for (int dbly_index = 0; dbly_index <= doubly; ++dbly_index) {
 
-                block_sector_t doubly_block = (*block_sector_t) inode->data.doubly[dbly_index];
-                int dbly_blk_size = (dbly_index == doubly) ? singly : SECTOR_POINTERS_PER_BLOCK;
+                block_sector_t doubly_block = (block_sector_t*) inode->data.doubly[dbly_index];
+                off_t dbly_blk_size = (dbly_index == doubly) ? singly : (off_t) SECTOR_POINTERS_PER_BLOCK;
 
                 for (int sngly_index = 0;
                      sngly_index <= dbly_blk_size; ++sngly_index) {//TODO <= or < ?
 
-                    block_sector_t  singly_bloc = (*block_sector_t) doubly_block[sngly_index];
-                    int sngly_blk_size = (sngly_index == singly) ? direct : SECTOR_POINTERS_PER_BLOCK;
-                    free_map_release(singly_bloc[0], sngly_blk_size);
+                    block_sector_t  singly_block = (block_sector_t*) doubly_block[sngly_index];
+                    off_t sngly_blk_size = (sngly_index == singly) ? direct : (off_t) SECTOR_POINTERS_PER_BLOCK;
+                    free_map_release(singly_block[0], sngly_blk_size);
                 }
             }
             break;
@@ -495,6 +495,7 @@ inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset) {
                 if (bounce == NULL)
                     break;
             }
+            //TODO change fs_device?
             block_read(fs_device, sector_idx, bounce);
             memcpy(buffer + bytes_read, bounce + sector_ofs, chunk_size);
         }
