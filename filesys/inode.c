@@ -92,7 +92,7 @@ inode_getIndices(off_t *direct, off_t *singly, off_t *doubly, off_t off);
 /*file extension routine - allocated enough blocks to make reads from and writes to
  blocks up to offset bytes from the start of an inode's data valid*/
 static bool
-inode_extend(struct inode *inode, off_t offset);
+inode_extend(struct inode *inode, off_t offset, size_t size);
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
@@ -121,9 +121,6 @@ byte_to_sector(struct inode *inode, off_t pos) {
 
     ASSERT((direct_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
     ASSERT((singly_indirect_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
-
-    if (write && (inode->sector != FREE_MAP_SECTOR))
-        inode_extend(inode, pos);
 
     type = inode_getIndices(&directI, &singlyI, &doublyI, pos);
 
@@ -227,7 +224,7 @@ inode_create(block_sector_t sector, off_t length, bool isDir) {
 	  struct inode dummy;
 	  dummy.data = *disk_inode;
 	  dummy.sector = sector;
-	  inode_extend(&dummy, length);
+	  inode_extend(&dummy, 0, length);
 	} else
 	  block_write(fs_device, sector, disk_inode);
         free(disk_inode);
@@ -433,18 +430,22 @@ inode_remove(struct inode *inode) {
 }
 
 static bool
-inode_extend(struct inode *inode, off_t offset) {
+inode_extend(struct inode *inode, off_t offset, size_t size) {
     ASSERT(inode != NULL);
 
     bool ret = true;
 
-    off_t start = inode->data.length;
+    off_t start;
+    if((inode->data.length - 1) < 0)
+      start = 0;
+    else
+      start = (inode->data.length - 1) + BLOCK_SECTOR_SIZE;
     off_t directStart, singlyStart, doublyStart;
     off_t directEnd, singlyEnd, doublyEnd;
     enum sector_t typeStart;
     
     size_t oldBlock = start / BLOCK_SECTOR_SIZE;
-    size_t offsetBlock = (offset - 1) / BLOCK_SECTOR_SIZE;
+    size_t offsetBlock = (offset + size - 1) / BLOCK_SECTOR_SIZE;
     size_t newBlock;
 
     static char zeros[BLOCK_SECTOR_SIZE];
@@ -459,7 +460,7 @@ inode_extend(struct inode *inode, off_t offset) {
     block_sector_t direct_sec, singly_sec, doubly_sec;
     block_sector_t direct_sec_ptr_list, singly_sec_ptr_list;
     
-    if (offsetBlock > oldBlock)
+    if (offsetBlock >= oldBlock)
       newBlock = offsetBlock;  
     else if(inode->data.length != 0)
       return true;
@@ -472,7 +473,7 @@ inode_extend(struct inode *inode, off_t offset) {
     memset(unalloc, INODE_SECTORS_UNALLOCATED, BLOCK_SECTOR_SIZE);
 
     typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, start);
-    inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock);
+    inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock * BLOCK_SECTOR_SIZE);
     
     direct_buff = inode->data.direct;
     singly_indirect_buff = inode->data.singly;
@@ -520,7 +521,7 @@ inode_extend(struct inode *inode, off_t offset) {
     free(direct_buff_tmp);
     free(singly_indirect_buff_tmp);
 
-    inode->data.length = offset;
+    inode->data.length = offset + size;
     block_write(fs_device, inode->sector, &inode->data);
 
     return ret;
@@ -600,9 +601,10 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 
     while (size > 0) {
         /* Sector to write, starting byte offset within sector. */
-        block_sector_t sector_idx = byte_to_sector(inode, offset);
-        if (sector_idx == INODE_SECTORS_UNALLOCATED)
-	  break;
+        block_sector_t sector_idx;
+	
+        while ((sector_idx = byte_to_sector(inode, offset)) == INODE_SECTORS_UNALLOCATED)
+	  inode_extend(inode, offset, size);
 
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
