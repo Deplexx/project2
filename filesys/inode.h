@@ -21,7 +21,7 @@ void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
 bool inode_isdir(struct inode *); 
-void lock_inode(struct inode *);
-void unlock_inode(struct inode *);
+bool lock_inode(struct inode *);
+bool unlock_inode(struct inode *);
 block_sector_t inode_inumber(struct inode *);
 #endif /* filesys/inode.h */

@@ -21,8 +21,8 @@
 #define INODE_SECTOR_NUMBER_SIZE (sizeof(unsigned))
 #define SECTOR_POINTERS_PER_BLOCK (BLOCK_SECTOR_SIZE / INODE_SECTOR_NUMBER_SIZE)
 
-#define INODE_POINTERS 125
-#define INODE_DIRECT 120
+#define INODE_POINTERS 124
+#define INODE_DIRECT 119
 #define INODE_SINGLY_INDIRECT 4
 #define INODE_DOUBLY_INDIRECT 1
 
@@ -53,6 +53,7 @@ struct lock lock_inode_close;
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
+    unsigned parent;
     unsigned isDir;                     /*determines */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
@@ -98,7 +99,7 @@ inode_extend(struct inode *inode, off_t offset);
    Returns -1 if INODE does not contain data for a byte at offset
    POS. */
 static block_sector_t
-byte_to_sector(struct inode *inode, off_t pos, bool write) {
+byte_to_sector(struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
 
     enum sector_t type;
@@ -158,26 +159,31 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
     return ret;
 }
 
-void lock_inode(struct inode* inode){
+bool lock_inode(struct inode* inode){
   ASSERT(inode != NULL);
-    /* while (true) { */
-        lock_acquire(&inode->lock);
+    while (true) {
+        lock_acquire(&lock_inode_close);
 
 
-    /*     if (inode != NULL) { */
-    /*         if(lock_try_acquire(&inode->lock)) { */
-    /*             lock_release(&lock_inode_close); */
-    /*             break; */
-    /*         } */
-    /*     } */
-
-    /*     lock_release(&lock_inode_close); */
-    /* } */
+        if (inode != NULL) {
+            if(lock_try_acquire(&inode->lock)) {
+                lock_release(&lock_inode_close);
+                return true;
+            } else
+	      lock_release(&lock_inode_close);
+        } else {
+	  lock_release(&lock_inode_close);
+	  return false;
+	}
+    }
 }
 
-void unlock_inode(struct inode* inode) {
-  ASSERT(inode != NULL);
-  lock_release(&inode->lock);
+bool unlock_inode(struct inode* inode) {
+  if(inode != NULL) {
+    lock_release(&inode->lock);
+    return true;
+  } else
+    return false;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -221,7 +227,7 @@ inode_create(block_sector_t sector, off_t length, bool isDir) {
 	  struct inode dummy;
 	  dummy.data = *disk_inode;
 	  dummy.sector = sector;
-	  inode_extend(&dummy, length - 1);
+	  inode_extend(&dummy, length);
 	} else
 	  block_write(fs_device, sector, disk_inode);
         free(disk_inode);
@@ -392,6 +398,8 @@ inode_free_map_release(struct inode *inode) {
 void
 inode_close(struct inode *inode) {
     lock_acquire(&lock_inode_close);
+    lock_acquire(&inode->lock);
+    lock_release(&inode->lock);
 
     /* Ignore null pointer. */
     if (inode == NULL)
@@ -436,7 +444,7 @@ inode_extend(struct inode *inode, off_t offset) {
     enum sector_t typeStart;
     
     size_t oldBlock = start / BLOCK_SECTOR_SIZE;
-    size_t offsetBlock = offset / BLOCK_SECTOR_SIZE;
+    size_t offsetBlock = (offset - 1) / BLOCK_SECTOR_SIZE;
     size_t newBlock;
 
     static char zeros[BLOCK_SECTOR_SIZE];
@@ -465,17 +473,16 @@ inode_extend(struct inode *inode, off_t offset) {
 
     typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, start);
     inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock);
-
+    
+    direct_buff = inode->data.direct;
+    singly_indirect_buff = inode->data.singly;
     while (true) {
-        direct_buff = inode->data.direct;
-        singly_indirect_buff = inode->data.singly;
 	direct_sec_ptr_list = singly_sec_ptr_list = inode->sector;
         switch (typeStart) {
             case eDOUBLY:
                 if ((doubly_sec = inode->data.doubly[doublyStart]) == INODE_SECTORS_UNALLOCATED) {
                     free_map_allocate(1, (block_sector_t *) &inode->data.doubly[doublyStart]);
                     doubly_sec = inode->data.doubly[doublyStart];
-                    block_write(fs_device, doubly_sec, unalloc);
                 }
 
                 singly_indirect_buff = singly_indirect_buff_tmp;
@@ -486,9 +493,7 @@ inode_extend(struct inode *inode, off_t offset) {
                     free_map_allocate(1, (block_sector_t *) &singly_indirect_buff[singlyStart]);
                     singly_sec = singly_indirect_buff[singlyStart];
                     block_write(fs_device, singly_sec, unalloc);
-		    if(singly_indirect_buff == inode->data.direct)
-		      block_write(fs_device, inode->sector, &inode->data);
-		    else
+		    if(singly_indirect_buff != inode->data.direct)
 		      block_write(fs_device, singly_sec_ptr_list, singly_indirect_buff);
                 }
 
@@ -499,9 +504,7 @@ inode_extend(struct inode *inode, off_t offset) {
 	        if ((direct_sec = direct_buff[directStart]) == INODE_SECTORS_UNALLOCATED) {
                     free_map_allocate(1, (block_sector_t *) &direct_buff[directStart]);
                     direct_sec = direct_buff[directStart];
-		    if(direct_buff == inode->data.direct)
-		      block_write(fs_device, inode->sector, &inode->data);
-		    else
+		    if(direct_buff != inode->data.direct)
 		      block_write(fs_device, direct_sec_ptr_list, direct_buff);
                 }
 
@@ -518,6 +521,7 @@ inode_extend(struct inode *inode, off_t offset) {
     free(singly_indirect_buff_tmp);
 
     inode->data.length = offset;
+    block_write(fs_device, inode->sector, &inode->data);
 
     return ret;
 }
@@ -534,7 +538,7 @@ inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset) {
     lock_inode(inode);
     while (size > 0) {
         /* Disk sector to read, starting byte offset within sector. */
-        block_sector_t sector_idx = byte_to_sector(inode, offset, false);
+        block_sector_t sector_idx = byte_to_sector(inode, offset);
         if (sector_idx == INODE_SECTORS_UNALLOCATED)
             break;
 
@@ -596,7 +600,7 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 
     while (size > 0) {
         /* Sector to write, starting byte offset within sector. */
-        block_sector_t sector_idx = byte_to_sector(inode, offset, true);
+        block_sector_t sector_idx = byte_to_sector(inode, offset);
         if (sector_idx == INODE_SECTORS_UNALLOCATED)
 	  break;
 
