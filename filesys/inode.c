@@ -413,14 +413,16 @@ inode_extend(struct inode *inode, off_t offset) {
         oldBlocks = 1;
     if (((offBlocks = (offset / BLOCK_SECTOR_SIZE)) == 0) && (offset != 0))
         offBlocks = 1;
-    newBlocks = oldBlocks;
-
-    if (offBlocks > oldBlocks)
-        do
-            newBlocks *= 2;
-        while (newBlocks < offBlocks);
+    
+    if((newBlocks = oldBlocks) == 0)
+      newBlocks = 1;
     else
-        return true;
+      if (offBlocks > oldBlocks)
+	do
+	   newBlocks *= 2;
+	while (newBlocks < offBlocks);
+      else
+	return true;
 
     ASSERT((singly_indirect_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
     ASSERT((direct_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
