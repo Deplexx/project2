@@ -521,6 +521,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
     free(direct_buff_tmp);
     free(singly_indirect_buff_tmp);
 
+  done:
     inode->data.length = offset + size;
     block_write(fs_device, inode->sector, &inode->data);
 
@@ -605,6 +606,11 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 	
         while ((sector_idx = byte_to_sector(inode, offset)) == INODE_SECTORS_UNALLOCATED)
 	  inode_extend(inode, offset, size);
+
+	if(inode->data.length < offset + size) {
+	  inode->data.length = offset + size;
+	  block_write(fs_device, inode->sector, &inode->data);
+	}
 
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
