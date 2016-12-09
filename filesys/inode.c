@@ -281,10 +281,12 @@ inode_free_map_release(struct inode *inode) {
     enum sector_t type = inode_getIndices(&direct, &singly, &doubly, inode->data.length);
     block_sector_t buff_s[BLOCK_SECTOR_SIZE], buff_d[BLOCK_SECTOR_SIZE];
 
+    int sctr, i, j;
+
     switch (type) {
         /** ----------------Direct--------------------------- */
         case eDIRECT:
-            for(int sctr = 0; sctr <= direct; sctr++)
+            for(sctr = 0; sctr <= direct; sctr++)
                 free_map_release(direct_ptr[sctr], 1);
             break;
 
@@ -292,16 +294,16 @@ inode_free_map_release(struct inode *inode) {
         case eSINGLY:
 
             //release all direct
-            for (int sctr = 0; sctr <= INODE_DIRECT; sctr++)
+            for ( sctr = 0; sctr <= INODE_DIRECT; sctr++)
                 free_map_release(direct_ptr[sctr], 1);
 
             /** release singly sectors one by one */
-            for (int i = 0; i <= singly; ++i) {//TODO <= or < ?
+            for ( i = 0; i <= singly; ++i) {//TODO <= or < ?
 
                 block_read(fs_device,  singly_ptr[i], buff_s);
                 off_t blk_size = (i == singly) ? direct : (off_t) SECTOR_POINTERS_PER_BLOCK;
 
-                for (int sctr = 0; sctr <= blk_size; ++sctr) {
+                for ( sctr = 0; sctr <= blk_size; ++sctr) {
                     free_map_release(buff_s[sctr], 1);
                 }
             }
@@ -312,32 +314,32 @@ inode_free_map_release(struct inode *inode) {
         case eDOUBLY:
 
             //release all direct
-            for (int sctr = 0; sctr <= INODE_DIRECT; sctr++)
+            for ( sctr = 0; sctr <= INODE_DIRECT; sctr++)
                 free_map_release(direct_ptr[sctr], 1);
 
             //release all singly
-            for (int i = 0; i <= INODE_SINGLY_INDIRECT; ++i) {
+            for ( i = 0; i <= INODE_SINGLY_INDIRECT; ++i) {
 
                 block_read(fs_device, singly_ptr[i], buff_s);
 
-                for (int sctr = 0; sctr <= SECTOR_POINTERS_PER_BLOCK; ++sctr)
+                for ( sctr = 0; sctr <= SECTOR_POINTERS_PER_BLOCK; ++sctr)
                     free_map_release(buff_s[sctr], 1);
             }
 
 
             /** release doubly sectors one by one */
-            for (int i = 0; i <= doubly; ++i) {
+            for ( i = 0; i <= doubly; ++i) {
 
                 block_read(fs_device, doubly_ptr[i], buff_d);
                 off_t dbly_blk_size = (i == doubly) ? singly : (off_t) SECTOR_POINTERS_PER_BLOCK;
 
-                for (int j = 0; j <= dbly_blk_size; ++j) {//TODO <= or < ?
+                for ( j = 0; j <= dbly_blk_size; ++j) {//TODO <= or < ?
 
 //                    block_sector_t  singly_block = (block_sector_t*) doubly_block[j];
                     block_read(fs_device, buff_d, buff_s);
                     off_t sngly_blk_size = (j == singly) ? direct : (off_t) SECTOR_POINTERS_PER_BLOCK;
 
-                    for (int sctr = 0; sctr <= direct; ++sctr)
+                    for ( sctr = 0; sctr <= direct; ++sctr)
                         free_map_release(buff_s[0], 1);
                 }
             }
