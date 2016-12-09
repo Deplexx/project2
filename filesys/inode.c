@@ -78,6 +78,7 @@ struct inode {
     struct inode_disk data;             /* Inode content. */
     bool isdir;
 	//TODO add more metadata: lock_grow and file* file
+    bool isFreemap;
     struct lock lock;
 };
 
@@ -120,7 +121,7 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
     ASSERT((direct_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
     ASSERT((singly_indirect_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
 
-    if (write)
+    if (write && (inode->sector != FREE_MAP_SECTOR))
         inode_extend(inode, pos);
 
     type = inode_getIndices(&directI, &singlyI, &doublyI, pos);
@@ -145,7 +146,7 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
             }
 
         case eDIRECT:
-            ret = singly_indirect_buff[directI];
+            ret = direct_buff[directI];
 
         default: /*should never be the case*/
             break;
@@ -158,35 +159,25 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
 }
 
 void lock_inode(struct inode* inode){
-    while (true) {
-        lock_acquire(&lock_inode_close);
+  ASSERT(inode != NULL);
+    /* while (true) { */
+        lock_acquire(&inode->lock);
 
 
-        if (inode != NULL) {
-            if(lock_try_acquire(&inode->lock)) {
-                lock_release(&lock_inode_close);
-                break;
-            }
-        }
+    /*     if (inode != NULL) { */
+    /*         if(lock_try_acquire(&inode->lock)) { */
+    /*             lock_release(&lock_inode_close); */
+    /*             break; */
+    /*         } */
+    /*     } */
 
-        lock_release(&lock_inode_close);
-    }
+    /*     lock_release(&lock_inode_close); */
+    /* } */
 }
 
-void unlock_inode(struct inode* inode){
-    while (true) {
-        lock_acquire(&lock_inode_close);
-
-
-        if (inode != NULL) {
-            if(lock_release(&inode->lock)) {
-                lock_release(&lock_inode_close);
-                break;
-            }
-        }
-
-        lock_release(&lock_inode_close);
-    }
+void unlock_inode(struct inode* inode) {
+  ASSERT(inode != NULL);
+  lock_release(&inode->lock);
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -222,11 +213,17 @@ inode_create(block_sector_t sector, off_t length, bool isDir) {
         disk_inode->length = 0;
         disk_inode->magic = INODE_MAGIC;
 
-        memset(disk_inode->direct, INODE_SECTORS_UNALLOCATED, INODE_DIRECT);
-        memset(disk_inode->singly, INODE_SECTORS_UNALLOCATED, INODE_SINGLY_INDIRECT);
-        memset(disk_inode->doubly, INODE_SECTORS_UNALLOCATED, INODE_DOUBLY_INDIRECT);
+        memset(disk_inode->direct, INODE_SECTORS_UNALLOCATED, INODE_DIRECT * sizeof(uint32_t));
+        memset(disk_inode->singly, INODE_SECTORS_UNALLOCATED, INODE_SINGLY_INDIRECT * sizeof(uint32_t));
+        memset(disk_inode->doubly, INODE_SECTORS_UNALLOCATED, INODE_DOUBLY_INDIRECT * sizeof(uint32_t));
 
-        block_write(fs_device, sector, disk_inode);
+	if(sector == FREE_MAP_SECTOR) {
+	  struct inode dummy;
+	  dummy.data = *disk_inode;
+	  dummy.sector = sector;
+	  inode_extend(&dummy, length - 1);
+	} else
+	  block_write(fs_device, sector, disk_inode);
         free(disk_inode);
         success = true;
     }
@@ -432,18 +429,15 @@ inode_extend(struct inode *inode, off_t offset) {
     ASSERT(inode != NULL);
 
     bool ret = true;
-    bool done = false;
 
-    size_t newSize = inode->data.length;
-
-    size_t offBlocks = offset / BLOCK_SECTOR_SIZE;
-    size_t oldBlocks = newSize / BLOCK_SECTOR_SIZE;
-    size_t newBlocks;
-
-    off_t start = inode->data.length + BLOCK_SECTOR_SIZE;
+    off_t start = inode->data.length;
     off_t directStart, singlyStart, doublyStart;
     off_t directEnd, singlyEnd, doublyEnd;
     enum sector_t typeStart;
+    
+    size_t oldBlock = start / BLOCK_SECTOR_SIZE;
+    size_t offsetBlock = offset / BLOCK_SECTOR_SIZE;
+    size_t newBlock;
 
     static char zeros[BLOCK_SECTOR_SIZE];
     static char unalloc[BLOCK_SECTOR_SIZE];
@@ -455,38 +449,27 @@ inode_extend(struct inode *inode, off_t offset) {
     block_sector_t *direct_buff_tmp;
 
     block_sector_t direct_sec, singly_sec, doubly_sec;
-
-    if (((oldBlocks = (newSize / BLOCK_SECTOR_SIZE)) == 0) && (newSize != 0))
-        oldBlocks = 1;
-    if (((offBlocks = (offset / BLOCK_SECTOR_SIZE)) == 0) && (offset != 0))
-        offBlocks = 1;
-
-    if((newBlocks = oldBlocks) == 0)
-      newBlocks = 1;
+    block_sector_t direct_sec_ptr_list, singly_sec_ptr_list;
+    
+    if (offsetBlock > oldBlock)
+      newBlock = offsetBlock;  
+    else if(inode->data.length != 0)
+      return true;
     else
-      if (offBlocks > oldBlocks)
-	do
-	   newBlocks *= 2;
-	while (newBlocks < offBlocks);
-      else
-	return true;
+      newBlock = 0;
 
     ASSERT((singly_indirect_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
     ASSERT((direct_buff_tmp = (block_sector_t *) malloc(BLOCK_SECTOR_SIZE)));
 
     memset(unalloc, INODE_SECTORS_UNALLOCATED, BLOCK_SECTOR_SIZE);
 
-    typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, (start += BLOCK_SECTOR_SIZE));
-    inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlocks);
-
-    if (doublyEnd == (off_t)NULL)
-        doublyEnd = doublyStart + 1;
-    if (singlyEnd == (off_t)NULL)
-        singlyEnd = singlyStart + 1;
+    typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, start);
+    inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock);
 
     while (true) {
         direct_buff = inode->data.direct;
         singly_indirect_buff = inode->data.singly;
+	direct_sec_ptr_list = singly_sec_ptr_list = inode->sector;
         switch (typeStart) {
             case eDOUBLY:
                 if ((doubly_sec = inode->data.doubly[doublyStart]) == INODE_SECTORS_UNALLOCATED) {
@@ -496,35 +479,45 @@ inode_extend(struct inode *inode, off_t offset) {
                 }
 
                 singly_indirect_buff = singly_indirect_buff_tmp;
+		singly_sec_ptr_list = doubly_sec;
                 block_read(fs_device, doubly_sec, singly_indirect_buff);
             case eSINGLY:
                 if ((singly_sec = singly_indirect_buff[singlyStart]) == INODE_SECTORS_UNALLOCATED) {
                     free_map_allocate(1, (block_sector_t *) &singly_indirect_buff[singlyStart]);
                     singly_sec = singly_indirect_buff[singlyStart];
                     block_write(fs_device, singly_sec, unalloc);
+		    if(singly_indirect_buff == inode->data.direct)
+		      block_write(fs_device, inode->sector, &inode->data);
+		    else
+		      block_write(fs_device, singly_sec_ptr_list, singly_indirect_buff);
                 }
 
                 direct_buff = direct_buff_tmp;
-                block_read(fs_device, doubly_sec, singly_indirect_buff);
+		direct_sec_ptr_list = singly_sec;
+                block_read(fs_device, singly_sec, singly_indirect_buff);
             case eDIRECT:
-                if ((direct_sec = singly_indirect_buff[directStart]) == INODE_SECTORS_UNALLOCATED) {
-                    free_map_allocate(1, (block_sector_t *) &singly_indirect_buff[directStart]);
+	        if ((direct_sec = direct_buff[directStart]) == INODE_SECTORS_UNALLOCATED) {
+                    free_map_allocate(1, (block_sector_t *) &direct_buff[directStart]);
                     direct_sec = direct_buff[directStart];
+		    if(direct_buff == inode->data.direct)
+		      block_write(fs_device, inode->sector, &inode->data);
+		    else
+		      block_write(fs_device, direct_sec_ptr_list, direct_buff);
                 }
 
                 block_write(fs_device, direct_sec, zeros);
         }
 
-        if (done)
-            break;
+      if (directStart == directEnd && singlyStart == singlyEnd && doublyStart == doublyEnd)
+        break;
 
-        typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, (start += BLOCK_SECTOR_SIZE));
-        if (directStart == directEnd && singlyStart == singlyEnd && doublyStart == doublyEnd)
-            done = true;
+      typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, (start += BLOCK_SECTOR_SIZE));
     }
 
     free(direct_buff_tmp);
     free(singly_indirect_buff_tmp);
+
+    inode->data.length = offset;
 
     return ret;
 }
@@ -548,7 +541,7 @@ inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset) {
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
         /* Bytes left in inode, bytes left in sector, lesser of the two. */
-        off_t inode_left = inode_length(inode) - offset;
+        off_t inode_left = inode->data.length - offset;
         int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
         int min_left = inode_left < sector_left ? inode_left : sector_left;
 
@@ -610,7 +603,7 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
         int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
         /* Bytes left in inode, bytes left in sector, lesser of the two. */
-        off_t inode_left = inode_length(inode) - offset;
+        off_t inode_left = inode->data.length - offset;
         int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
         int min_left = inode_left < sector_left ? inode_left : sector_left;
 
