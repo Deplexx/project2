@@ -9,6 +9,7 @@
 #include "threads/malloc.h"
 #include "../devices/block.h"
 #include "filesys.h"
+#include "threads/synch.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -72,10 +73,14 @@ struct inode {
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
+    bool isdir;
+	//TODO add more metadata: lock_grow and file* file
+    struct lock lock;
+  };
 };
 
 /*sets 3 off_t pointers  the indices of direct, singly indirect, and doubly indirect sectors
-  for an offset into an inode. 
+  for an offset into an inode.
   returns the type of acccess the offset is*/
 static enum sector_t
 inode_getIndices(off_t *direct, off_t *singly, off_t *doubly, off_t off);
@@ -150,6 +155,14 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
     return ret;
 }
 
+void lock_inode(struct inode* inode){
+  lock_acquire(&inode->lock);
+}
+
+void unlock_inode(struct inode* inode){
+  lock_release(&inode->lock);
+}
+
 /* List of open inodes, so that opening a single inode twice
    returns the same `struct inode'. */
 static struct list open_inodes;
@@ -218,14 +231,14 @@ inode_open(block_sector_t sector) {
     if (inode == NULL)
         return NULL;
 
-    /* Initialize. */
-    list_push_front(&open_inodes, &inode->elem);
-    inode->sector = sector;
-    inode->open_cnt = 1;
-    inode->deny_write_cnt = 0;
-    inode->removed = false;
-    block_read(fs_device, inode->sector, &inode->data);
-    return inode;
+  /* Initialize. */
+  list_push_front (&open_inodes, &inode->elem);
+  inode->sector = sector;
+  inode->open_cnt = 1;
+  inode->deny_write_cnt = 0;
+  inode->removed = false;
+  lock_init(&inode->lock);block_read (fs_device, inode->sector, &inode->data);
+  return inode;
 }
 
 /* Reopens and returns INODE. */
@@ -413,7 +426,7 @@ inode_extend(struct inode *inode, off_t offset) {
         oldBlocks = 1;
     if (((offBlocks = (offset / BLOCK_SECTOR_SIZE)) == 0) && (offset != 0))
         offBlocks = 1;
-    
+
     if((newBlocks = oldBlocks) == 0)
       newBlocks = 1;
     else
@@ -623,3 +636,12 @@ off_t
 inode_length(const struct inode *inode) {
     return inode->data.length;
 }
+
+bool inode_isdir(struct inode * inode){
+  return inode->isdir;
+}
+
+block_sector_t inode_inumber(struct inode * inode){
+  return inode->sector;
+}
+
