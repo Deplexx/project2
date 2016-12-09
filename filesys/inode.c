@@ -242,6 +242,10 @@ inode_get_inumber(const struct inode *inode) {
     return inode->sector;
 }
 
+bool inode_isdir(struct inode *inode) {
+  return inode->data.isDir;
+}
+
 static enum sector_t
 inode_getIndices(off_t *direct, off_t *singly, off_t *doubly, off_t off) {
     ASSERT((direct && singly && doubly) != (off_t)NULL);

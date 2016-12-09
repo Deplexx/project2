@@ -11,6 +11,7 @@
 #include "../threads/synch.h"
 #include "../filesys/file.h"
 #include "../filesys/filesys.h"
+#include "../filesys/inode.h"
 #include "process.h"
 #include "../devices/shutdown.h"
 #include "../devices/input.h"
@@ -19,8 +20,6 @@
 
 #define max_param 3
 int syscall_param[max_param];
-
-struct lock lock_filesys;
 
 bool create(const char* file, unsigned initial_size);
 
@@ -120,7 +119,6 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void) 
 {
-  lock_init(&lock_filesys);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -268,31 +266,12 @@ int wait(int pid){
 
 bool create(const char* file, unsigned initial_size){
   if(file == NULL) { exit(-1);}
-  lock_acquire(&lock_filesys);	/*declares ownership of filesys*/
   check_user_ptr(file);
   bool retval = filesys_create(file,initial_size, false);
-  lock_release(&lock_filesys);  /*release ownership*/
   return retval;
 }
 
 bool remove(const char* file){
-  /*lock_acquire(&lock_filesys);
-  bool retval = filesys_remove(file);
-  unsigned cur_hash_num = hash_string(file);
-
-  remove all associated file_def in list*/
-  /*for(e = list_begin(&open_file_list);e != list_end(&open_file_list);e = list_next(e))  {
-    struct file_def* fp = list_entry(e,struct file_def, elem);
-    if (cur_hash_num == fp->hash_num){
-      if (strcmp(file,fp->file_str)==0){
-	      list_remove(&(fp->elem));	
-      }
-    }
-  }
-
-  lock_release(&lock_filesys);
-  return retval;  */
-
   return filesys_remove(file);
 }
 
@@ -302,14 +281,12 @@ int open(const char* file){
     return -1;
   }
   check_user_ptr(file);
-  lock_acquire(&lock_filesys);
   struct file *fp = filesys_open(file);
   unsigned cur_hash_num = hash_string(file);
   char* file_str_ptr = (char*)file;
   unsigned i = 0;
 
   if (fp == NULL) {
-    lock_release(&lock_filesys);
     return -1;
   }
 
@@ -319,7 +296,6 @@ int open(const char* file){
   struct file_def *cur_file = (struct file_def*)malloc(sizeof(struct file_def));    
   if (cur_file == NULL) {
     file_close(fp);
-    lock_release(&lock_filesys);
     return -1;
   }
   cur_file->hash_num = cur_hash_num; 
@@ -330,7 +306,6 @@ int open(const char* file){
   if (cur_file->file_str == NULL){
     free(cur_file);
     file_close(fp);
-    lock_release(&lock_filesys);
     return -1;
   }
 
@@ -346,9 +321,7 @@ int open(const char* file){
     struct file_def* fp = list_entry(e,struct file_def, elem);
     if (cur_hash_num == fp->hash_num){
       if (strcmp(file,fp->file_str)==0){
-        lock_release(&lock_filesys);
 	close(fp->fd);	
-        lock_acquire(&lock_filesys);
         break;
       }
     }
@@ -362,7 +335,6 @@ int open(const char* file){
   if ((t->fd_counter == 0) || (t->fd_counter == 1)) t->fd_counter = 2;
 
 
-  lock_release(&lock_filesys);
   return cur_file->fd;
 }
 
@@ -371,15 +343,12 @@ int open(const char* file){
 
 int filesize(int fd){
   int length;
-  lock_acquire(&lock_filesys);
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
   if (fp == NULL){
-    lock_release(&lock_filesys);
     return 0;
   }
   length = file_length(fp->opened_file);
-  lock_release(&lock_filesys);
   return length;
 }
 
@@ -387,7 +356,6 @@ int read(int fd, void* buffer,unsigned size){
   int32_t retval;
   if (size == 0) return 0;
   check_user_ptr(buffer);
-  lock_acquire(&lock_filesys);
   /*read from keyboard*/
   if (fd == 0){
     uint8_t *buffer_ = (uint8_t *)buffer;
@@ -395,18 +363,15 @@ int read(int fd, void* buffer,unsigned size){
     for (i=0;i<size;i++){
       *(buffer_+i) = input_getc();
     }
-    lock_release(&lock_filesys);
     return size;
   }
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
-    lock_release(&lock_filesys);
     return 0;
   }
   retval = (int32_t)file_read(fp->opened_file,buffer,size);
 
-  lock_release(&lock_filesys);
   return retval;
 }
 
@@ -415,7 +380,6 @@ int write(int fd, const void* buffer, unsigned size){
   unsigned counter = 0;
   if (size == 0) {return 0;}
   check_user_ptr(buffer);
-  lock_acquire(&lock_filesys);
   /*write to console*/
   if (size == 0) return 0;
   if (fd == 1){
@@ -426,57 +390,46 @@ int write(int fd, const void* buffer, unsigned size){
       size = size - 512;
     }
     putbuf((char*)buffer,size);
-    lock_release(&lock_filesys);
     return size;
   }
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
-    lock_release(&lock_filesys);
     return 0;
   }
    retval = (int32_t)file_write(fp->opened_file,buffer,size);
-  lock_release(&lock_filesys);
   
   return retval;
 }
 
 void seek(int fd, unsigned position){
-  lock_acquire(&lock_filesys);
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
    if (fp == NULL){
-    lock_release(&lock_filesys);
     return;
   }
  file_seek(fp->opened_file,position);
-  lock_release(&lock_filesys);
 }
 
 unsigned tell(int fd){
-  lock_acquire(&lock_filesys);
   int pos;
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
   if (fp == NULL){
-    lock_release(&lock_filesys);
     return 0;
   }
 
   pos = file_tell(fp->opened_file);
-  lock_release(&lock_filesys);
   return pos;
 }
 
 void close(int fd){
-  lock_acquire(&lock_filesys);
   if ((fd==0) || (fd==1)) exit(-1);
 
   struct thread* t = thread_current();
   struct file_def* fp = find_file_def(t, fd);
 
   if (fp == NULL){
-    lock_release(&lock_filesys);
     return;
   }
 
@@ -492,7 +445,6 @@ void close(int fd){
     free(fp);
   } 
 
-  lock_release(&lock_filesys);
 }
 
 bool mkdir(char* path){
@@ -533,7 +485,7 @@ int inumber(int fd) {
   if (fp == NULL) return -1;
   struct inode* inode = file_get_inode(fp->opened_file);
   if (inode == NULL) return -1; 
-  return inode_inumber(inode);
+  return inode_get_inumber(inode);
 }
 
 
