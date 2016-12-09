@@ -47,7 +47,8 @@ enum sector_t {
     eDIRECT, eSINGLY, eDOUBLY
 };
 
-struct lock inode_close_lock;
+
+struct lock lock_inode_close;
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -156,12 +157,36 @@ byte_to_sector(struct inode *inode, off_t pos, bool write) {
     return ret;
 }
 
-void lock_inode(struct inode *inode){
-  lock_acquire(&inode->lock);
+void lock_inode(struct inode* inode){
+    while (true) {
+        lock_acquire(&lock_inode_close);
+
+
+        if (inode != NULL) {
+            if(lock_try_acquire(&inode->lock)) {
+                lock_release(&lock_inode_close);
+                break;
+            }
+        }
+
+        lock_release(&lock_inode_close);
+    }
 }
 
-void unlock_inode(struct inode *inode){
-  lock_release(&inode->lock);
+void unlock_inode(struct inode* inode){
+    while (true) {
+        lock_acquire(&lock_inode_close);
+
+
+        if (inode != NULL) {
+            if(lock_release(&inode->lock)) {
+                lock_release(&lock_inode_close);
+                break;
+            }
+        }
+
+        lock_release(&lock_inode_close);
+    }
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -172,7 +197,7 @@ static struct list open_inodes;
 void
 inode_init(void) {
     list_init(&open_inodes);
-    lock_init(&inode_close_lock);
+    lock_init(&lock_inode_close);
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -369,16 +394,12 @@ inode_free_map_release(struct inode *inode) {
    If INODE was also a removed inode, frees its blocks. */
 void
 inode_close(struct inode *inode) {
-  bool freeInode = false;
+    lock_acquire(&lock_inode_close);
 
-    lock_acquire(&inode_close_lock);
     /* Ignore null pointer. */
-    if (inode == NULL) {
-        lock_release(&inode_close_lock);
+    if (inode == NULL)
         return;
-    }
 
-    lock_inode(inode);
     /* Release resources if this was the last opener. */
     if (--inode->open_cnt == 0) {
         /* Remove from inode list and release lock. */
@@ -390,14 +411,10 @@ inode_close(struct inode *inode) {
             inode_free_map_release(inode);
         }
 
-	freeInode = true;
-    }
-    unlock_inode(inode);
-    
-    if(freeInode)
-      	lock_inode(inode);
         free(inode);
-    lock_release(&inode_close_lock);
+    }
+
+    lock_release(&lock_inode_close);
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
