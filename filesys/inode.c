@@ -21,10 +21,10 @@ struct inode_disk
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
     bool isdir;
-
+    block_sector_t inode_parent;
 	//TODO update UNUSED to (1) array of 120 direct ptrs (2) array of 5 signle indirect ptrs (3) one double indirect ptr
 	//TODO add inod_type
-    uint32_t unused[124];               /* Not used. */
+    uint32_t unused[123];               /* Not used. */
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -44,7 +44,6 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
-    bool isdir;
 	//TODO add more metadata: lock_grow and file* file
     struct lock lock;
   };
@@ -106,6 +105,7 @@ inode_create (block_sector_t sector, off_t length, bool isdir)
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
       disk_inode->isdir = isdir;
+      disk_inode->inode_parent = ROOT_DIR_SECTOR; 
       if (free_map_allocate (sectors, &disk_inode->start)) 
         {
           block_write (fs_device, sector, disk_inode);
@@ -177,6 +177,16 @@ inode_get_inumber (const struct inode *inode)
   return inode->sector;
 }
 
+block_sector_t get_inode_parent(const struct inode *inode) {
+  return inode->data.inode_parent;
+}
+
+bool set_inode_parent(struct inode *inode, block_sector_t parent) 
+{
+  if (inode == NULL) return false;
+  else inode->data.inode_parent = parent;
+  return true;
+}
 /* Closes INODE and writes it to disk.
    If this was the last reference to INODE, frees its memory.
    If INODE was also a removed inode, frees its blocks. */
@@ -369,7 +379,8 @@ inode_length (const struct inode *inode)
 }
 
 bool inode_isdir(struct inode * inode){
-  return inode->isdir;
+  printf("random!!!!!!!!!!!!!!!!\n");
+  return inode->data.isdir;
 }
 
 block_sector_t inode_inumber(struct inode * inode){

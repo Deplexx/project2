@@ -4,8 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-
-
+#include "filesys/directory.h"
 
 
 /* States in a thread's life cycle. */
@@ -111,7 +110,7 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
+    struct dir* current_dir;
   };
 
 struct file_def{ /*contains all info of a currently opened file*/
