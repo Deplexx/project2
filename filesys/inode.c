@@ -614,7 +614,8 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
         /* Sector to write, starting byte offset within sector. */
         block_sector_t sector_idx;
 	
-        while ((sector_idx = byte_to_sector(inode, offset)) == INODE_SECTORS_UNALLOCATED)
+        while (((sector_idx = byte_to_sector(inode, offset)) == INODE_SECTORS_UNALLOCATED)
+	       || (inode->data.length / BLOCK_SECTOR_SIZE) < ((offset + size) / BLOCK_SECTOR_SIZE))
 	  inode_extend(inode, offset, size);
 
 	if(inode->data.length < offset + size) {
