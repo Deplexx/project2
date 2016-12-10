@@ -224,8 +224,6 @@ inode_create(block_sector_t sector, off_t length, bool isDir) {
 	dummy.data = *disk_inode;
 	dummy.sector = sector;
 	inode_extend(&dummy, 0, length);
-	if(sector != FREE_MAP_SECTOR)
-	   block_write(fs_device, sector, disk_inode);
         free(disk_inode);
         success = true;
     }
@@ -504,7 +502,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
 
                 direct_buff = direct_buff_tmp;
 		direct_sec_ptr_list = singly_sec;
-                block_read(fs_device, singly_sec, singly_indirect_buff);
+                block_read(fs_device, singly_sec, direct_buff);
             case eDIRECT:
 	        if ((direct_sec = direct_buff[directStart]) == INODE_SECTORS_UNALLOCATED) {
                     free_map_allocate(1, (block_sector_t *) &direct_buff[directStart]);
@@ -528,6 +526,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
 
   done:
     inode->data.length = offset + size;
+    //printf("sector num: %d, inode length is: %d \n", inode->sector, inode->data.length);
     block_write(fs_device, inode->sector, &inode->data);
 
     return ret;
@@ -693,6 +692,7 @@ inode_length(const struct inode *inode) {
 
     lock_inode(inode);
     len = inode->data.length;
+    //printf("inode sector: %d, inode length: %d", inode->sector, inode->data.length);
     unlock_inode(inode);
     return len;
 }
