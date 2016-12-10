@@ -53,10 +53,10 @@ struct lock lock_inode_close;
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
-    unsigned parent;
     unsigned isDir;                     /*determines */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
+	block_sector_t inode_parent;
     block_sector_t direct[INODE_DIRECT];
     block_sector_t singly[INODE_SINGLY_INDIRECT];
     block_sector_t doubly[INODE_DOUBLY_INDIRECT];
@@ -79,7 +79,6 @@ struct inode {
     struct inode_disk data;             /* Inode content. */
     bool isdir;
 	//TODO add more metadata: lock_grow and file* file
-    bool isFreemap;
     struct lock lock;
 };
 
@@ -280,8 +279,15 @@ inode_get_inumber(const struct inode *inode) {
     return inode->sector;
 }
 
-bool inode_isdir(struct inode *inode) {
-  return inode->data.isDir;
+block_sector_t get_inode_parent(const struct inode *inode) {
+  return inode->data.inode_parent;
+}
+
+bool set_inode_parent(struct inode *inode, block_sector_t parent) 
+{
+  if (inode == NULL) return false;
+  else inode->data.inode_parent = parent;
+  return true;
 }
 
 static enum sector_t
@@ -708,3 +714,14 @@ block_sector_t inode_inumber(struct inode * inode){
   return sector;
 }
 
+bool inode_isdir(struct inode *inode) {
+  ASSERT(inode != NULL);
+
+  bool isDir;
+  
+  lock_inode(inode);
+  isDir = inode->data.isDir;
+  unlock_inode(inode);
+
+  return isDir;
+}

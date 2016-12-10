@@ -6,11 +6,71 @@
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
 #include "filesys/directory.h"
+#include "threads/thread.h"
 
 /* Partition that contains the file system. */
 struct block *fs_device;
 
 static void do_format (void);
+
+void get_info(struct file_info *info, char* str) {
+  if (str == NULL) return;
+  int32_t len = strlen(str);
+  if (len <= 0) return;
+
+  char temp[len+1];
+  int32_t name_count = 0;
+
+  struct dir *dir;
+  struct inode* inode;
+  struct inode** inode_p = malloc(sizeof(struct inode*));//TODO: free this mem
+
+  if (thread_current()->current_dir == NULL) dir = dir_open_root();
+  else if (str[0] == '/') dir = dir_open_root();
+  else dir = dir_reopen(thread_current()->current_dir);
+
+  int i;
+  for (i=0;i < len; i++){
+    if ((str[i] == '/') || (i==len-1)){
+      if (i == 0) continue;
+      else {
+	/* current or parent direcotry*/
+	if ((temp[0] == '.') && (temp[1] == '.')) {
+	  inode = inode_open(get_inode_parent(dir_get_inode(dir)));
+	  dir_close(dir);
+	  dir = dir_open(inode);
+	} else {
+	  /* subdirecotry*/
+	  if (i==len-1){ 
+	    temp[name_count] = str[i];
+	    ++name_count;	    
+	  }
+          temp[name_count] = 0;
+	  dir_lookup(dir, temp, inode_p);
+	
+	  /* regular file*/
+	  /*if (inode_isdir(*inode_p)){
+	    dir_close(dir);
+	    dir = dir_open(*inode_p); 
+	  } else {*/
+	    //inode_close(inode_p);
+	  //}
+	}
+	if (i != len-1)
+          name_count = 0;
+      } 
+    } else {
+      temp[name_count] = str[i];
+      ++name_count;
+    }
+  }
+    free(inode_p);
+//  info->dir = dir;
+//  info->name = malloc(name_count + 1);
+//  memcpy(info->name, temp, name_count+1);
+    info->name = str;
+    info->dir = dir_open_root();
+}
 
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
@@ -46,11 +106,21 @@ bool
 filesys_create (const char *name, off_t initial_size, bool isdir) 
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  struct file_info file_info;
+  file_info.name = NULL;
+  file_info.dir = NULL;
+
+  get_info(&file_info, name);
+  if (!file_info.name || !file_info.dir) return false;
+  struct dir *dir = file_info.dir;
+  char * file_name = file_info.name;
+
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size,isdir)
-                  && dir_add (dir, name, inode_sector));
+                  && dir_add (dir, file_name, inode_sector));
+
+//  free(file_name);
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -66,14 +136,22 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  struct file_info file_info;
+  file_info.name = NULL;
+  file_info.dir = NULL;
+
+  get_info(&file_info, name);
+  if (!file_info.name || !file_info.dir) return false;
+  struct dir *dir = file_info.dir;
+  char * file_name = file_info.name;
   struct inode *inode = NULL;
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+    dir_lookup (dir, file_name, &inode);
   dir_close (dir);
-
-  return file_open (inode);
+//  free(file_name);
+  struct file* file = file_open(inode);
+  return file;
 }
 
 /* Deletes the file named NAME.
@@ -83,13 +161,21 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
-  dir_close (dir); 
+  struct file_info file_info;
+  file_info.name = NULL;
+  file_info.dir = NULL;
 
+  get_info(&file_info, name);
+  if (!file_info.name || !file_info.dir) return false;
+  struct dir *dir = file_info.dir;
+  char * file_name = file_info.name;
+
+  bool success = dir != NULL && dir_remove (dir, file_name);
+  dir_close (dir); 
+//  free(file_name);
   return success;
 }
-
+
 /* Formats the file system. */
 static void
 do_format (void)

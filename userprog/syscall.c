@@ -15,6 +15,7 @@
 #include "process.h"
 #include "../devices/shutdown.h"
 #include "../devices/input.h"
+#include "../filesys/directory.h"
 #include "../threads/malloc.h"
 #include "../threads/vaddr.h"
 
@@ -454,7 +455,19 @@ bool mkdir(char* path){
   return retval;
 }
 
-bool chdir(char* path){return true;}
+bool chdir(char* path){
+  /*struct file_info file_info;
+  get_info(&file_info, path);
+  struct dir *dir = file_info.dir;
+
+  free(file_info.name);
+  if (dir == NULL) return false;
+  else {
+    dir_close(thread_current()->current_dir);
+    thread_current()->current_dir = dir;
+    return true;
+  }*/ return true;
+}
 
 bool readdir(int fd, char* path){
   struct thread* t = thread_current();
@@ -465,7 +478,7 @@ bool readdir(int fd, char* path){
   if (inode == NULL) return false; 
   if (!inode_isdir(inode)) return false;
 
-  //TODO: read dir 
+  return dir_readdir((struct dir*)fp, path);
 }
 
 bool isdir(int fd) {

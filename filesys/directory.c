@@ -7,11 +7,9 @@
 #include "threads/malloc.h"
 
 
-//TODO Parsing dir path should be performed piece by piece
 /* A directory. */
 struct dir 
   {
-    //TODO add ./ and ../
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
   };
@@ -31,6 +29,7 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 {
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry), true);
 }
+
 
 /* Opens and returns the directory for the given INODE, of which
    it takes ownership.  Returns a null pointer on failure. */
@@ -163,6 +162,9 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
     goto done;
+
+  /* set inode parent*/
+  set_inode_parent(inode_open(inode_sector),inode_get_inumber(dir_get_inode(dir)));  
 
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the

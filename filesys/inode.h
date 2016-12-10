@@ -13,6 +13,8 @@ bool inode_create_free_map (block_sector_t, off_t);
 struct inode *inode_open (block_sector_t);
 struct inode *inode_reopen (struct inode *);
 block_sector_t inode_get_inumber (const struct inode *);
+block_sector_t get_inode_parent(const struct inode *);
+bool set_inode_parent(struct inode*, block_sector_t);
 void inode_close (struct inode *);
 void inode_remove (struct inode *);
 off_t inode_read_at (struct inode *, void *, off_t size, off_t offset);
