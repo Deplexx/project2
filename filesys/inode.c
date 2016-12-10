@@ -172,8 +172,8 @@ bool lock_inode(struct inode* inode){
   /* 	  return false; */
   /* 	} */
   /*   } */
-  /* ASSERT(inode != NULL); */
-  /* lock_acquire(&inode->lock); */
+  ASSERT(inode != NULL);
+  lock_acquire(&inode->lock);
 }
 
 bool unlock_inode(struct inode* inode) {
@@ -182,8 +182,8 @@ bool unlock_inode(struct inode* inode) {
   /*   return true; */
   /* } else */
   /*   return false; */
-  /* ASSERT(inode != NULL); */
-  /* lock_release(&inode->lock); */
+  ASSERT(inode != NULL);
+  lock_release(&inode->lock);
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -408,8 +408,8 @@ inode_close(struct inode *inode) {
     lock_acquire(&lock_inode_close);
         /* Ignore null pointer. */
 
-    lock_acquire(&inode->lock);
-    lock_release(&inode->lock);
+    /* lock_acquire(&inode->lock); */
+    /* lock_release(&inode->lock); */
 
     /* Release resources if this was the last opener. */
     if (--inode->open_cnt == 0) {
@@ -472,7 +472,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
     if (offsetBlock >= oldBlock)
       newBlock = offsetBlock;  
     else if(inode->data.length != 0)
-      return true;
+      newBlock = oldBlock;
     else
       newBlock = 0;
 
