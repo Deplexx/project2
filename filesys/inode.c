@@ -156,30 +156,34 @@ byte_to_sector(struct inode *inode, off_t pos) {
 }
 
 bool lock_inode(struct inode* inode){
-  ASSERT(inode != NULL);
-    while (true) {
-        lock_acquire(&lock_inode_close);
+  /* ASSERT(inode != NULL); */
+  /*   while (true) { */
+  /*       lock_acquire(&lock_inode_close); */
 
 
-        if (inode != NULL) {
-            if(lock_try_acquire(&inode->lock)) {
-                lock_release(&lock_inode_close);
-                return true;
-            } else
-	      lock_release(&lock_inode_close);
-        } else {
-	  lock_release(&lock_inode_close);
-	  return false;
-	}
-    }
+  /*       if (inode != NULL) { */
+  /*           if(lock_try_acquire(&inode->lock)) { */
+  /*               lock_release(&lock_inode_close); */
+  /*               return true; */
+  /*           } else */
+  /* 	      lock_release(&lock_inode_close); */
+  /*       } else { */
+  /* 	  lock_release(&lock_inode_close); */
+  /* 	  return false; */
+  /* 	} */
+  /*   } */
+  /* ASSERT(inode != NULL); */
+  /* lock_acquire(&inode->lock); */
 }
 
 bool unlock_inode(struct inode* inode) {
-  if(inode != NULL) {
-    lock_release(&inode->lock);
-    return true;
-  } else
-    return false;
+  /* if(inode != NULL) { */
+  /*   lock_release(&inode->lock); */
+  /*   return true; */
+  /* } else */
+  /*   return false; */
+  /* ASSERT(inode != NULL); */
+  /* lock_release(&inode->lock); */
 }
 
 /* List of open inodes, so that opening a single inode twice
