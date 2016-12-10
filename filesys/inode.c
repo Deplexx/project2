@@ -39,8 +39,8 @@
 #define INODE_DOUBLY_OFF(off) (off - (DIRECT_REGION_SIZE + SINGLY_REGION_SIZE))
 
 #define INODE_IS_DIRECT(off) (((off < DIRECT_REGION_SIZE) && (off >= 0)) ? true : false)
-#define INODE_IS_SINGLY(off) (((off > DIRECT_REGION_SIZE) && (off < (SINGLY_REGION_SIZE + DIRECT_REGION_SIZE))) ? true : false)
-#define INODE_IS_DOUBLY(off) (((off > (DIRECT_REGION_SIZE + SINGLY_REGION_SIZE)) \
+#define INODE_IS_SINGLY(off) (((off >= DIRECT_REGION_SIZE) && (off < (SINGLY_REGION_SIZE + DIRECT_REGION_SIZE))) ? true : false)
+#define INODE_IS_DOUBLY(off) (((off >= (DIRECT_REGION_SIZE + SINGLY_REGION_SIZE)) \
                     && (off < (DOUBLY_REGION_SIZE + SINGLY_REGION_SIZE + DIRECT_REGION_SIZE))) ? true : false)
 
 enum sector_t {
@@ -220,13 +220,12 @@ inode_create(block_sector_t sector, off_t length, bool isDir) {
         memset(disk_inode->singly, INODE_SECTORS_UNALLOCATED, INODE_SINGLY_INDIRECT * sizeof(uint32_t));
         memset(disk_inode->doubly, INODE_SECTORS_UNALLOCATED, INODE_DOUBLY_INDIRECT * sizeof(uint32_t));
 
-	if(sector == FREE_MAP_SECTOR) {
-	  struct inode dummy;
-	  dummy.data = *disk_inode;
-	  dummy.sector = sector;
-	  inode_extend(&dummy, 0, length);
-	} else
-	  block_write(fs_device, sector, disk_inode);
+	struct inode dummy;
+	dummy.data = *disk_inode;
+	dummy.sector = sector;
+	inode_extend(&dummy, 0, length);
+	if(sector != FREE_MAP_SECTOR)
+	   block_write(fs_device, sector, disk_inode);
         free(disk_inode);
         success = true;
     }
@@ -294,6 +293,7 @@ inode_getIndices(off_t *direct, off_t *singly, off_t *doubly, off_t off) {
     *direct = (off_t)NULL;
     *singly = (off_t)NULL;
     *doubly = (off_t)NULL;
+    //printf("offset is size: %d\n", off);
 
     if (INODE_IS_DIRECT(off)) {
         *direct = INODE_DIRECT_OFF(off) / DIRECT_SIZE;
@@ -394,13 +394,14 @@ inode_free_map_release(struct inode *inode) {
    If INODE was also a removed inode, frees its blocks. */
 void
 inode_close(struct inode *inode) {
+    if (inode == NULL)
+      return;
+  
     lock_acquire(&lock_inode_close);
+        /* Ignore null pointer. */
+
     lock_acquire(&inode->lock);
     lock_release(&inode->lock);
-
-    /* Ignore null pointer. */
-    if (inode == NULL)
-        return;
 
     /* Release resources if this was the last opener. */
     if (--inode->open_cnt == 0) {
@@ -442,7 +443,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
       start = (inode->data.length - 1) + BLOCK_SECTOR_SIZE;
     off_t directStart, singlyStart, doublyStart;
     off_t directEnd, singlyEnd, doublyEnd;
-    enum sector_t typeStart;
+    enum sector_t typeStart, typeEnd;
     
     size_t oldBlock = start / BLOCK_SECTOR_SIZE;
     size_t offsetBlock = (offset + size - 1) / BLOCK_SECTOR_SIZE;
@@ -473,7 +474,10 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
     memset(unalloc, INODE_SECTORS_UNALLOCATED, BLOCK_SECTOR_SIZE);
 
     typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, start);
-    inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock * BLOCK_SECTOR_SIZE);
+    //printf("inode number: %d and typeStart is %d", inode->sector, (int) typeStart);
+    typeEnd = inode_getIndices(&directEnd, &singlyEnd, &doublyEnd, newBlock * BLOCK_SECTOR_SIZE);
+
+    //printf("directEnd: %d, singlyEnd: %d, doublyEnd: %d, typeEnd: %d\n", directEnd, singlyEnd, doublyEnd, typeEnd);
     
     direct_buff = inode->data.direct;
     singly_indirect_buff = inode->data.singly;
@@ -494,7 +498,7 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
                     free_map_allocate(1, (block_sector_t *) &singly_indirect_buff[singlyStart]);
                     singly_sec = singly_indirect_buff[singlyStart];
                     block_write(fs_device, singly_sec, unalloc);
-		    if(singly_indirect_buff != inode->data.direct)
+		    if(singly_indirect_buff != inode->data.singly)
 		      block_write(fs_device, singly_sec_ptr_list, singly_indirect_buff);
                 }
 
@@ -512,9 +516,10 @@ inode_extend(struct inode *inode, off_t offset, size_t size) {
                 block_write(fs_device, direct_sec, zeros);
         }
 
-      if (directStart == directEnd && singlyStart == singlyEnd && doublyStart == doublyEnd)
+      if (directStart == directEnd && singlyStart == singlyEnd && doublyStart == doublyEnd && typeStart == typeEnd)
         break;
 
+      //printf("directStart: %d, singlyStart: %d, doublyStart: %d, typeStart: %d\n", directStart, singlyStart, doublyStart, typeStart);
       typeStart = inode_getIndices(&directStart, &singlyStart, &doublyStart, (start += BLOCK_SECTOR_SIZE));
     }
 
